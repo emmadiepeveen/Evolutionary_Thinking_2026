@@ -1,142 +1,162 @@
-# Friday Week36
+# Friday Week 36
 
-[slides for today](https://github.com/cpantea/Evolutionary_Thinking_2023/edit/main/week36/Friday/Week36_Fri.pdf)
+
+[Slides for today](https://github.com/Bjarke-M/Evolutionary_Thinking_2023/blob/main/week35/Friday/wk1_session2_substitution_models.pdf)
 
 ## Work plan
 
-Remember from last week that we did part of the **steps of the phylogenetic analysis**, from sequence retrieve to distance matrix computation (Fig1).
+During this TA session you are going to learn how to retrieve sequences (DNA, RNA, protein) and information about them from public datasets, align those sequences and finally compute a pairwise distance matrix with MEGAX. For each step, you are going to follow a tutorial to understand the basics and then, you will apply what you've learnt with a case example. I suggest to take the protein FOXP2 as a case example, but you are totally free to choose any other DNA, RNA or protein sequence. 
 
-<img src="Fig1.png" width="100%">
+### 1. Understanding PubMed and GenBank
 
->**Fig 1.** Steps of the phylogenetic analysis
+GenBank is a useful database that contains DNA, RNA and protein sequences publicly available that we will access through MEGA11 to download sequences of interest. You can read more about it [here](https://www.ncbi.nlm.nih.gov/genbank/). 
 
-This week we are going to explore which substitution model fits best our data, which tree building algorithm to use and how to assess confidence to that tree. During this exercise it is important that you keep all the results (screenshots with notes in a text editor, such as word, for example) that you obtain in the different parts in order to be able to compare them.
+In order to use GenBank efficiently, as other databases such as [PubMed](https://pubmed.ncbi.nlm.nih.gov) used to search for papers, it is a good idea to use specific search fields. These can be specified as e.g. [Author], [pdat] (publication time) and [Title] and use logical operators to combine search terms, e.g. AND, OR, NOT. For example, try to search “Zhao[Author] AND Wu F[Author] AND Yu[Author] AND coronavirus[Title] AND 2020[pdat]” on [PubMed](https://pubmed.ncbi.nlm.nih.gov). Which paper comes up?
 
-### 1. Testing substitution model
+By searching papers in [PubMed](https://pubmed.ncbi.nlm.nih.gov) and [GenBank](https://www.ncbi.nlm.nih.gov/genbank/) (and Google for sure), answer the following questions:
 
-Here we are going to test which substitution model is the best of our data.
+1. Find and download the paper of the first sequence of the human genome by the International Human Genome Sequencing Consortium or the one assembled by Craig Venter et al in 2001. Where was it published?
+2. Find the paper on the high coverage archaic Denisovan sequence published by Svante Pääbo's group published in 2012 and answer the same questions. Who were the Denisovans?
+3. How many sequences from the dolphin (you might want to use the latin name *Delphinidae*) can you find? You can choose any other animal!
+4. Find the Taxonomic position of Dolphins and find the number of DNA sequences deposited in GenBank for some of the dolphin species
+5. Find sequences from FOXP2. What can you learn about this protein?
 
-1. Download [`primates.meg`](primates.meg) which is the one from Chapter 3 in Nei and Kumar.
-2. Open MEGA11 and import this data to MEGA11. This can be easily done dragging the file to the main MEGA11 window or cliking on the **DATA** button. 
-3. Click **MODELS** on the main MEGA11 window and click **Find Best DNA/Protein Models (ML)...**
+### 2. Retrieving sequences from GenBank and Aligning them with MEGA11
 
-This will estimate likelihoods for each substitution model available and rank them according to the Bayesian information criterion (BIC). This value is similar to AIC. For now just accept that the smallest value is best.
+#### 2.1. Retrieving sequences DIRECTLY from GenBank and Aligning them with MEGA11
 
-1. Which model is best for this data? Save the Table of model scores since when running some of the tree building methods, you may not be able to use the best model.
-2. What does G and I mean?
-3. What is R? and what is in the 4 columns following the R column?
-4. List the main differences between JC, Kimura, HKY, and Tamura/Nei models, based on Table 3.2 a,b,e below (Fig2). Relate what you find to question 3 above. 
+In this section we are going to access GenBank from MEGA11 to retrieve sequences and Align them using different multiple sequence aligners included in MEGA11.
 
-
-<img src="Fig2.png" width="75%">
-
->**Fig 2.** Substitution models' parameters
-
-From now on, before you start any analysis you are well advised to determine the best substitution model first
-
-### 2. Tree building
-
-#### 2.1. Tree building MEGA11 tutorial
-
-<img src="Fig3.png" width="75%">
-
->**Fig 3.** Tree algorithm classes.
-
-Follow [Building Trees From Sequence Data](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FBuilding_Trees_From_Sequence_Data.htm) tutorial from [MEGAX-Help](https://www.megasoftware.net/web_help_10/index.htm#t=Preface.htm).
+Follow [2. Align Sequences](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm) tutorial from [MEGAX-Help](https://www.megasoftware.net/web_help_10/index.htm#t=Introduction.htm)
 
 There are some parts of the tutorial that are wrong. Here you have some fixies:
 
-1. In the **Building a Neighbor-Joining (NJ) Tree** section, there is a step that says
+1. In the **Aligning Sequences by ClustalW** section, there is a step that says
 
-    ```Click Compute to accept the defaults for the rest of the options and begin the computation.```
-
- Instead of **Compute**, you will find **OK**
-  
-2. When prompted to select View|Topology Only in the tutorial, you will find no such option within the 'View' dropdown menu; it is only present as a [GUI button](https://i.imgur.com/qCqU1Go.png):
-
-<img src="https://i.imgur.com/qCqU1Go.png" width="75%">
-
-3. For displaying branch lengths
-  
-    ```You can display the numerical branch lengths in the Topology Only option by selecting View | Options and clicking on the Branch tab. Check the box labeled Display Branch Length and click Ok.```
-
-   you can find the option under the "Show/Hide" tab/submenu, as there is no "Branch" tab/submenu:
-
-<img src="https://i.imgur.com/nfVUJg4.png" width="75%">  
+    ```Exit the Alignment Explorer by selecting Data | Exit Aln Explorer from the main menu.```
     
-4. You don't need to do the **Printing the NJ Tree (For Windows users), Printing the NJ Tree (For Mac users) or Constructing a MP Tree using the Heuristic Search**.
-
-5. After skipping past the previous steps to
-
-```Construct a Maximum Parsimony (MP) Tree Using the Branch-&-Bound Search Option```
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Ignore the steps
-
-```(Windows users) Now print this tree by selecting either of the Print options from the Tree Explorer's File menu.```
-
-```(Mac users) Save the tree to a PDF file as described in Example 4.2b above.```
-
-6. The last exercise **Examining Data Editing Features** just tells you how not to use some of the sequences to build a tree without removing the sequences from the raw file. I just want to make clear the purpose of the exercise. A part from that, when it says 
-
-    ```Click the Close button.```
+    Instead of **Exit Aln Explorer**, you will find **Quit**
     
-    Instead of **Close**, you will find **OK**
+2. In the **Aligning Sequences Using Muscle** there is a sentence that tells you that
 
-#### 2.2. Tree building with your case example
-
-Last week you had a case example. Some of you took FOXP2 from some great apes and mouse, but some of you were using the Denisova, the Neanderthal and the Human mtDNA or you were comparing some SARS-CoV2 sequences. Now it's time to get them back! If you did not save the sequences or the alignments, you can get the [FOXP2 sequences](Human_Chimp_Gorilla_Mouse_FOXP2_CDS_DNA_SEQ.fas) I got last time. I also ran a phylogenetic analysis with the [S protein gene of the SARS-Cov2](SARS-Cov2_gene_DNA_SEQ.meg) sequenced from diferent patients around the world (Australia, USA, Spain, Denmark and China). If you are more interesetd on this data, you can also use it for this exercise. Be aware that you must align them, before building the tree model or run the model selection since they are just the raw sequences. Alternatively, you can always choose any sequence that you like!
-
-For the dataset you decided:
-
-1. Check which substitution model fits the best for those sequences
-2. Build a UPGMA tree with the best substitution model that it allows (UPGMA can not be run with all substitution models).
-3. Questions:
-
-    1. Which substitution model should you use?
-    2. What does the substitution method you chose assume?
-    3. Rebuild the tree the same way but choose 1,000 bootstrap replicates. What is bootstrap? What does it then mean if a branch is supported by 90%?
-
-4. Play with the tree format in the tree explorer
-5. Save the tree
-6. Repeat 1-5 using Neighbourjoining, Parsimony and Maximum likelihood tree bulding algorithms (check the questions on the next point and don't automatically produce all the trees at once).
-7. Questions: 
+    ```Near the bottom of the MUSCLE - AppLink window, you will see a row called Alignment Info. You can read information about the Muscle program.```
     
-    About NJ: How does NJ work?
-    About MP: How does MP work?
-    About ML: How does ML work?
-
-### 3. Results
-
-#### 3.1. FOXP2 dataset
-
-The best model:
-
-- Best model    : HKY (Hasegawa-Kishino-Yano)
-- paramteres    : 9
-- BIC           : 7353.666
-- AICc          : 7290.166
-
-for UPGMA and NJ I used:
-
-- Model choosen : TN93 (Tamura-Nei)
-- parameters    : 10
-- BIC           : 7361.402
-- AICc          : 7290.849
+    But I could not find it. If you can't neither, skip this step
 
 
-<img src="Fig4.png" width="75%">
+3. In the **Obtaining Sequence Data from the Internet (GenBank)** section, when it tells you to look for CFS sequence, I suggest that you look for any sequence you might be interested in. In my case I looked for the Neanderthal, Denisovan and Human mitochondrial DNA (this was taken from a previous TA, because as we all know humans are boring and primates are the best, so maybe compare the EPAS1 Gene from different primates). If you follow what I've done, be aware that since they are big sequences, aligning them is going to take some time than smaller protein sequences.  
+    
+    
+4. In the **Obtaining Sequence Data from the Internet (GenBank)** section, you will see that the tutorial says
 
->**Fig 4.** Tree results from FOXP2
+    ```If you have checked more than one box: locate the Display Settings dropdown (located near the top left-hand side of the page directly under the tab headings).```
+    
+    You just have to click on **Summary** drop down menu (Fig1) and follow the next indications. Be aware that once you press **Fasta (text)** it automatically applies it, so you don't need to press any **Apply button**. And you need to mark the sequences you want before changing.
+    
 
-#### 3.2. SARS-Cov2 S protein gene dataset
+    <img src="genbank_summary.jpg" width="50%">
 
-The best model was:
+    >**Fig1.** Summary drop down menu location
 
-- Best model    : T92 (Tamura 3 parameters)
-- paramteres    : 9
-- BIC           : 10518.312
-- AICc          : 10447.730
+#### 2.2. Retrieving sequences BY SEQUENCE HOMOLOGY from GenBank using BLAST and Aligning them with MEGAX
 
-<img src="Fig5.png" width="75%">
+In this section, in comparison to the previous one, we are going to choose a single sequence (query) and search other sequences that are homologous to that one (targets) using BLAST. Then, we are going to retrieve those sequences from GenBank and align them as we did in the previous section. 
 
->**Fig 5.** Tree results from SARS-Cov2 S protein gene
+BLAST (basic local alignment search tool) is an algorithm and program for comparing primary biological sequence information, such as the amino-acid sequences of proteins or the nucleotides of DNA and/or RNA sequences. A BLAST search enables a researcher to compare a subject protein or nucleotide sequence (called a query) with a library or database of sequences, and identify library sequences that resemble the query sequence above a certain threshold. [Wikipedia](https://en.wikipedia.org/wiki/BLAST_(biotechnology)).
+
+Thus, we can search sequences that are homologous to a sequence of our interest using BLAST through MEGAX. Here you have a small tutorial of how to do so:
+
+1. Open MEGAX
+2. Click on **ALIGN** on the top menu and select **Edit/Build Alignment**. Press **OK** and then **DNA**
+3. On the top menu you have a shortcut for **Query GenBank**. Otherwise you can click on **Web** and select **Query GenBank **.
+4. As you did in the [2. Align Sequences](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm) tutorial, look for a protein. The Human FOXP2 could be an example and retrieve that sequence to MEGAX
+5. Click on your sequence (it has to turn yellowish)
+6. Similarly as you did to access GenBank, click on **Do BLAST search**. In the Query text box, you should see your sequence. If not, it means that you haven't selected your sequence.
+7. Scroll down and click on **BLAST**
+8. On the results page, scroll down and unselect the **select all** option. Then, select the sequences you might be interested in and click on the **GeneBank** link on top of the sequence results.
+9. Finally, follow what you did in the [2. Align Sequences](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm) tutorial to retrieve the sequences you selected in BLAST and align those sequences
+
+### 3. Get your case example sequences and align them
+
+Now is the time for you to decide which sequence you want to investigate. Maybe you want to learn how haemoglobin has changed in different mammal species? Maybe you want to compare different SARS-CoV2 viruses, some from Denmark and some from US? Up to you! I prepared these exercises with the **CDS** (**C**o**D**ing **S**equence) of FOXP2 and you are welcome to follow my example. It is important that you obtain a CDS DNA sequence in order to translate DNA to protein. If you don't, if you get a whole DNA sequence, be aware that the steps in which we translate the protein might not make sense for you, especially when we align sequences. 
+
+You should also be aware that when you retrieve sequences, they should have similar lengths. If you get, for example, the CDS DNA sequence of the Human FOXP2, but you get the whole mRNA sequence of the Chimp FOXP2, then, you will get lots of gaps in your alignment, since you are not dealing with the same type of sequence. 
+
+You might find an entry for the CDS of the gene you are interested. However, if you only find the mDNA sequence entry you will have to look for the CDS coordinates in the GenBank page of the gene (Fig2).
+
+<img src="Fig2.png" width="75%">
+
+>**Fig2.** How to get the CDS sequence form the RefSeq entry in GenBank. Red circles show where you must click.
+
+Once you made your mind about which sequence you are going to work on...
+
+1. Retrieve sequences directly form GenBank or search for homology in BLAST to select your sequences. In my case I selected the Chimp, Gorilla and Mouse sequences to compare. 
+2. Align the DNA sequences. Try to change some options before running the alignment and see how this changes your output. Do you see many gaps? What about base substitutions? Get a feeling of how good or how bad those sequences align. 
+
+I found these pairwise differences(See below about how to do this)
+
+|       |  Human  |  Chimp  |  Goril  |
+|:-----:|--------:|--------:|--------:|
+| Human |         |         |         |
+| Chimp |      30 |         |         |
+| Goril |      31 |      8  |         |
+| Mouse |     152 |     139 |     133 |
+
+3. Right click on each sequence and click on **Delete Gaps** if the option is available. This will undo the alignment. 
+4. Select all DNA sequences and click on **Translated Protein Sequences**. This step will translate DNA sequences to protein sequences. 
+5. Align the protein sequences. Ask yourself the same questions as in step 2. Which sequences align better? DNA or protein? Why?
+
+I found these pairwise differences
+
+|       |  Human  |  Chimp  |  Goril  |
+|:-----:|--------:|--------:|--------:|
+| Human |         |         |         |
+| Chimp |       2 |         |         |
+| Goril |       2 |       0 |         |
+| Mouse |       3 |       1 |       1 |
+
+6. Export your alignments in **.meg** (MEGA) format. Remember: Data > Export Alignment > MEGA format
+
+The protein differences I've found I show them in Fig3 below. The deletions are predicted to not change much the function of the protein (Fig3a). However, the substitutions you see on Fig3b, they are thought to be essential for brain development and have been linked to correct speetch in humans and grammar learning. They were thought to be a difference between humans and Neanderthals that would explain why humans were able to develop complex language and thus be so successfull compared to our arhcaic relatives. However, Neanderthals share the same substitutions with us and then, this hypothesis was proved to be wrong, at least for this gene. You can read more on internet about this ([link](https://www.nature.com/news/2007/071018/full/news.2007.177.html)).
+
+<img src="Fig3a.png" width="75%">
+<img src="Fig3b.png" width="75%">
+
+>**Fig3.** Indels and substitutions in the FOXP2 gene.
+
+### 4. Estimate pairwise distances among sequences
+
+Follow the section **Estimating Evolutionary Distances Using Pairwise Distance** from the [3. Estimating Evolutionary Distances](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FEstimating_Evolutionary_Distances.htm) tutorial from [MEGAX-Help](https://www.megasoftware.net/web_help_10/index.htm#t=Introduction.htm). 
+
+Then, repeat what you've learned in this tutorial with you own example.
+
+I computed the number of differences of the FOXP2 CDS for human, chimp and gorilla sequences aligned with MUSCLE. These are the values I obtained with p-distance:
+
+for DNA:
+
+|       |  Human  |  Chimp  |  Goril  |
+|:-----:|--------:|--------:|--------:|
+| Human |         |         |         |
+| Chimp | 0.00372 |         |         |
+| Goril | 0.00373 | 0.00420 |         |
+| Mouse | 0.06536 | 0.06434 | 0.06218 |
+
+
+for protein:
+
+|       |     Human    |     Chimp    |     Goril    |
+|:-----:|-------------:|-------------:|-------------:|
+| Human |              |              |              |
+| Chimp | 0.0027972028 |              |              |
+| Goril | 0.0028050491 | 0.0000000000 |              |
+| Mouse | 0.0042016807 | 0.0014005602 | 0.0014044944 |
+
+Try to draw a tree in which the branch lengths are proportional to the distances. Can you?
+
+## Extra info
+
+1. Paper that investigate the COVID19 spread in the early times of the first outbreak and study of some particular cases in Iceland
+
+    Gudbjartsson D, Helgason A, Jonsson H, Magnusson O, Melsted P, Norddahl G et al. [Spread of SARS-CoV-2 in the Icelandic Population](https://www.nejm.org/doi/full/10.1056/NEJMoa2006100). New England Journal of Medicine. 2020;382(24):2302-2315.
+
+2. Repository of all sequenced SARS-CoV2 worldwide with interactive phylogenetic tree of the sequences ([link](https://nextstrain.org/ncov/global))
