@@ -1,18 +1,29 @@
-# Wednesday Week36
+# Evolutionary-Thinking-2026 -- Week 35
 
-[Slides for today](https://github.com/cpantea/Evolutionary_Thinking_2023/blob/main/week36/Wednesday/Week36_Wed.pdf)
-
-## Work plan
-
-We are going to discuss the MODELTEST paper and answer some questions about it in a shared google docs document.
-
-### MODELTEST algorithm paper
-
-You should read this paper before Monday class:
-
-D Posada, K A Crandall, [MODELTEST: testing the model of DNA substitution](https://doi.org/10.1093/bioinformatics/14.9.817)., Bioinformatics, Volume 14, Issue 9, 1998, Pages 817–818
+[Slides for today](https://github.com/Bjarke-M/Evolutionary_Thinking_2024/blob/main/week35/Wednesday/SESSION%201.pdf)
 
 
-Then, you are going to comment it in groups and answer the questions that you can find in the [shared google docs](https://docs.google.com/document/d/1PE2yuAdapNSAZIzPYr7VewSzIq8TAQP5zHpx2gPt3rI). 
+We will go through the pretest of "tree", basically a general understanding of the phylogeny.
 
-Odd-numbered groups will first address questions 1-6, while even-numbered groups should initially focus on 7-11.
+Then we will finish the installation of MEGA 11 for Friday's exercises.
+
+## Tree Pretest
+
+Pen and Paper exercises
+
+30 min group works with your peers before starting checking the answers.
+
+HINTs:
+
+1.Meaning of the nodes and branches in a phylogenic tree.
+
+2.Concept of "Common Ancestor"
+
+[Solutions](https://docs.google.com/document/d/1gca29t0lDALeHBa5VoLKm_OJs6BO720adv7xBndXyA4/edit?usp=sharing) to the pretest
+
+## MEGA 11 installation
+Follow the guide from [MEGA](https://www.megasoftware.net) to download the corresponding version for your system.
+
+
+There are also simple visual tutorials available for MEGA [download](https://i.imgur.com/dsL42Ey.gif) and for [Windows installation](https://i.imgur.com/RlZ21NT.gif).
+
