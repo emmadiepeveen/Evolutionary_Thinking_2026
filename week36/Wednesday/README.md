@@ -1,4 +1,4 @@
-# Evolutionary-Thinking-2026 -- Week 35
+# Evolutionary-Thinking-2026 -- Week 36
 
 [Slides for today](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week36/Wednesday/Evolutionary_thinking_2026_wednesday.pdf)
 
