@@ -1,6 +1,6 @@
 # Evolutionary-Thinking-2026 -- Week 35
 
-[Slides for today](https://github.com/Bjarke-M/Evolutionary_Thinking_2024/blob/main/week35/Wednesday/SESSION%201.pdf)
+[Slides for today](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week36/Wednesday/Evolutionary_thinking_2026_wednesday.pdf)
 
 
 We will go through the pretest of "tree", basically a general understanding of the phylogeny.
