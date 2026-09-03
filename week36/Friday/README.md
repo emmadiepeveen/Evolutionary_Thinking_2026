@@ -1,8 +1,5 @@
 # Friday Week 36
 
-
-[Slides for today](https://github.com/Bjarke-M/Evolutionary_Thinking_2023/blob/main/week35/Friday/wk1_session2_substitution_models.pdf)
-
 ## Work plan
 
 During this TA session you are going to learn how to retrieve sequences (DNA, RNA, protein) and information about them from public datasets, align those sequences and finally compute a pairwise distance matrix with MEGAX. For each step, you are going to follow a tutorial to understand the basics and then, you will apply what you've learnt with a case example. I suggest to take the protein FOXP2 as a case example, but you are totally free to choose any other DNA, RNA or protein sequence. 
@@ -27,7 +24,7 @@ By searching papers in [PubMed](https://pubmed.ncbi.nlm.nih.gov) and [GenBank](h
 
 In this section we are going to access GenBank from MEGA11 to retrieve sequences and Align them using different multiple sequence aligners included in MEGA11.
 
-Follow [2. Align Sequences](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm) tutorial from [MEGAX-Help](https://www.megasoftware.net/web_help_10/index.htm#t=Introduction.htm)
+Follow [2. Align Sequences] https://megasoftware.net/web_help_12/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm
 
 There are some parts of the tutorial that are wrong. Here you have some fixies:
 
@@ -69,12 +66,12 @@ Thus, we can search sequences that are homologous to a sequence of our interest 
 1. Open MEGAX
 2. Click on **ALIGN** on the top menu and select **Edit/Build Alignment**. Press **OK** and then **DNA**
 3. On the top menu you have a shortcut for **Query GenBank**. Otherwise you can click on **Web** and select **Query GenBank **.
-4. As you did in the [2. Align Sequences](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm) tutorial, look for a protein. The Human FOXP2 could be an example and retrieve that sequence to MEGAX
+4. As you did in the [2. Align Sequences] https://megasoftware.net/web_help_12/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm tutorial, look for a protein. The Human FOXP2 could be an example and retrieve that sequence to MEGAX
 5. Click on your sequence (it has to turn yellowish)
 6. Similarly as you did to access GenBank, click on **Do BLAST search**. In the Query text box, you should see your sequence. If not, it means that you haven't selected your sequence.
 7. Scroll down and click on **BLAST**
 8. On the results page, scroll down and unselect the **select all** option. Then, select the sequences you might be interested in and click on the **GeneBank** link on top of the sequence results.
-9. Finally, follow what you did in the [2. Align Sequences](https://www.megasoftware.net/web_help_10/index.htm#t=Part_I_Getting_Started%2FA_Walk_Through_MEGA%2FAligning_Sequences.htm) tutorial to retrieve the sequences you selected in BLAST and align those sequences
+9. Finally, follow what you did in the [2. Align Sequences] tutorial to retrieve the sequences you selected in BLAST and align those sequences
 
 ### 3. Get your case example sequences and align them
 
