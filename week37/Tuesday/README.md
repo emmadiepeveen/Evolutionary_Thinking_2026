@@ -1,6 +1,6 @@
 # Tuesday Week 37
 
-[Slides for today](https://github.com/cpantea/Evolutionary_Thinking_2023/blob/main/week36/Wednesday/Week36_Wed.pdf)
+[Slides for today](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week37/Tuesday/Week_37_presentationTuesday.pdf)
 
 ## Work plan
 
