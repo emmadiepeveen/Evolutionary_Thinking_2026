@@ -1,7 +1,6 @@
 # Friday Week36
 
-#upload slides down here
-# [slides for today](https://github.com/cpantea/Evolutionary_Thinking_2023/edit/main/week36/Friday/Week36_Fri.pdf)
+# [slides for today](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week37/Wednesday/Week_37_presentationWednesday.pdf)
 
 ## Work plan
 
