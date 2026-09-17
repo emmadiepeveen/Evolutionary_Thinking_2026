@@ -1,0 +1,1193 @@
+---
+title: "Introduction to phylogenies in R"
+subtitle: "Week 4 practical — from the lecture to the keyboard"
+author: "Original: Liam J. Revell · Adapted by: Moisès Coll Macià · Expanded by Viktoria Weisz"
+date: "`r format(Sys.Date(), '%d %B %Y')`"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    number_sections: true
+    theme: flatly
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(
+  echo = TRUE,        # show the code
+  message = FALSE,    # hide chatty package start-up messages
+  warning = FALSE,    # hide warnings (turn to TRUE if you want to see them)
+  fig.align = "center",
+  fig.width = 7,
+  fig.height = 5
+)
+```
+
+# How to use this document {#how-to}
+
+This is an **R Markdown notebook** (`.Rmd`). It mixes three things:
+
+1. **Text** (like this paragraph) — read it.
+2. **Code chunks** — the grey boxes. This is real R code and you are meant to *run* it.
+3. **Questions** — boxes marked 💭. Stop and answer them before moving on. They are the
+   whole point of the session: the code is easy, the thinking is not.
+
+The answers are in the **last section**, scrambled so that you cannot read them by accident.
+Go there first and run the one chunk you find — it takes a second and prints nothing — and
+you will then be able to check any answer by typing `reveal(3)` in the console.
+
+### Running code
+
+Open this file in **RStudio**. You will see four panels:
+
+| Panel | What it is |
+|---|---|
+| **Source** (top-left) | this document |
+| **Console** (bottom-left) | where R actually runs. Code you "send" ends up here |
+| **Environment** (top-right) | a list of every object you have created so far |
+| **Files / Plots / Packages / Help** (bottom-right) | your folder, your figures, your help pages |
+
+To run code:
+
+* **One line**: put the cursor on it and press `Ctrl + Enter` (`Cmd + Enter` on Mac).
+* **One whole chunk**: click the green ▶ at the top-right of the chunk, or `Ctrl + Shift + Enter`.
+* **The whole document into a report**: press **Knit**. Do this *last*, not while you are exploring.
+
+Work through the document by running chunks **in order**. Later chunks use objects created
+by earlier ones — if you skip ahead, R will complain that it cannot find something.
+
+### Reading output
+
+In this document, lines that begin with `##` are *not* code — they are what R printed back
+at you. So this:
+
+```r
+1 + 1
+```
+
+```
+## [1] 2
+```
+
+means "we asked R for `1 + 1`, and R answered `2`". (The `[1]` is explained in §2.3.)
+
+### Getting unstuck
+
+* `?read.tree` opens the help page for a function. Scroll to **Examples** at the bottom —
+  usually the fastest way to understand a function.
+* An error is not a disaster. Read the *first* line; it usually names the problem.
+  §13 at the end lists the five errors you are most likely to hit today.
+* Ask. You are in a room with a TA.
+
+---
+
+# The R survival kit {#survival-kit}
+
+> **Skip this section only if you have used R before.** Everything here comes back later,
+> so 20 minutes now saves an hour of confusion at §5.
+
+## Objects and assignment
+
+R is a calculator that remembers things. You store a result in an **object** with the
+assignment arrow `<-` (RStudio shortcut: `Alt + -`).
+
+```{r}
+x <- 5          # store 5 in an object called x
+x               # type the name to see what is inside
+x * 2           # use it
+```
+
+Three things that bite beginners:
+
+* `x <- 5` stores silently, it prints nothing. That is normal.
+* R is **case-sensitive**: `x` and `X` are different objects.
+* A dot `.` in a name means **nothing special** in R — it is just a character in the name.
+  So `vert.tree` is one object called "vert.tree", not "the tree part of vert". (If you come
+  from Python or Java, unlearn this now — it matters at §5 where we meet `tree$edge`.)
+
+```{r}
+my.first.object <- "I am just a name with dots in it"
+my.first.object
+```
+
+## Functions and arguments
+
+A **function** is a verb: it takes inputs (*arguments*) and gives back a result.
+
+```{r}
+round(3.14159, digits = 2)
+```
+
+* `round` is the function name.
+* Everything inside the `( )` are the arguments, separated by commas.
+* Arguments can be given **by position** (`round(3.14159, 2)`) or **by name**
+  (`digits = 2`). Naming is safer and self-documenting.
+* Most arguments have **defaults**, so you only set the ones you want to change.
+
+This is why phylogenetics code looks the way it does:
+
+```r
+plot(vert.tree, no.margin = TRUE, edge.width = 2)
+```
+
+is just "plot this tree, and by the way, no margins, and draw thick branches".
+Nothing more mysterious than that.
+
+> 💭 **Question 1.** `?round` tells you the function is defined as `round(x, digits = 0)`.
+> Without running it: what will `round(2.718)` return, and why?
+>
+> *Answer: run* `reveal(1)` *(see the last section).*
+
+```{r}
+#reveal(1)
+```
+
+
+## Vectors: R's basic unit
+
+R does not really do single values — it does **vectors** (an ordered sequence of values of
+the *same* type). Build one with `c()` ("combine").
+
+```{r}
+tips <- c("cow", "pig", "whale", "bat")
+tips
+length(tips)
+```
+
+Now the `[1]` mystery is solved: it is the index of the first element printed on that line.
+Ask for a long vector and you will see `[1]`, `[15]`, `[29]`… as it wraps.
+
+```{r}
+1:30
+```
+
+Pick elements out with **square brackets**. R counts from **1**, not 0.
+
+```{r}
+tips[1]        # the first
+tips[c(2, 4)]  # the second and the fourth
+tips[-1]       # everything EXCEPT the first
+```
+
+Types matter. `"5"` (with quotes) is text; `5` is a number. R will not add text.
+
+```{r}
+class(tips)
+class(c(1, 2, 3))
+class(c(TRUE, FALSE))
+```
+
+> 💭 **Question 2.** A tree with 82 species will have its tip names in a character vector
+> of length 82. Write the expression that would give you the **last** tip name.. (Hint: you have `length()`.)
+>
+> *Answer: run* `reveal(2)` *(see the last section).*
+
+```{r}
+#reveal(2)
+```
+
+
+## Lists: boxes that hold different things
+
+A **vector** holds many values of *one* type. A **list** holds anything at all — numbers,
+text, matrices, even other lists — each under a name. You reach inside a list with `$`.
+
+```{r}
+my.list <- list(
+  species = c("human", "chimp"),
+  n       = 2,
+  matrix  = matrix(1:4, nrow = 2)
+)
+
+my.list$species
+my.list$n
+names(my.list)   # what is in the box?
+```
+
+**This is the single most important idea for today.** A phylogenetic tree in R *is* a list.
+When you write `tree$tip.label` in §5, you are just opening a labelled compartment of a box.
+
+## Matrices: rows and columns of numbers
+
+```{r}
+m <- matrix(1:6, nrow = 3)
+m
+dim(m)     # 3 rows, 2 columns
+m[2, ]     # row 2, all columns
+m[, 1]     # all rows, column 1
+m[2, 1]    # one cell
+```
+
+The comma inside `[ ]` means "rows , columns". An empty side means "all of them".
+The branches of a tree are stored exactly like this — see §5.2.
+
+> 💭 **Question 3.** `m[2, ]` gave you a vector, not a matrix. Why do you think R drops the
+> dimension, and when could that surprise you?
+>
+> *Answer: run* `reveal(3)` *(see the last section).*
+
+```{r}
+#reveal(3)
+```
+
+
+## Packages: installing vs loading
+
+R by itself does not know what a phylogeny is. That knowledge lives in **packages** written
+by other researchers and distributed through **CRAN** (the central R archive).
+
+Two separate steps, and confusing them is the #1 beginner problem:
+
+| Step | Command | How often |
+|---|---|---|
+| **Install** — download to your hard drive | `install.packages("ape")` | **once per computer** |
+| **Load** — make it available right now | `library(ape)` | **every new R session** |
+
+If you get `could not find function "read.tree"`, you almost certainly forgot `library(ape)`.
+
+You can also call a function without loading, using `package::function`:
+
+```r
+ape::read.tree(text = "(A,B);")
+```
+
+This is useful when two packages define a function with the same name.
+
+## Where am I? Files and the working directory
+
+R always has a **working directory** — the folder it looks in when you say `read.tree(file = "anole.tre")`.
+
+```{r}
+getwd()
+```
+
+**Do this now:** save this `.Rmd` file into a dedicated folder for today, and put any data
+files in the *same* folder. When you knit an `.Rmd`, R sets the working directory to the
+folder containing the `.Rmd`, so everything just works.
+
+Windows users: if you ever type a path by hand, use forward slashes —
+`"C:/Users/AU/TA/anole.tre"` — or double backslashes. A single `\` is an escape
+character in R and will throw an error.
+
+> 💭 **Question 4.** You run `read.tree(file = "anole.tre")` and get
+> `Error in file(file, "r") : cannot open the connection`. Name two different things that
+> could be wrong.
+>
+> *Answer: run* `reveal(4)` *(see the last section).*
+
+```{r}
+#reveal(4)
+```
+
+---
+
+# Installing the phylogenetics packages {#install}
+
+R phylogenetics is built on contributed packages, and there are many. Today we need
+**ape**, **phangorn**, **phytools** and **geiger**.
+
+First, check which R you are running. Packages on CRAN are built for recent R versions, so a
+very old R is the usual reason an install fails.
+
+```{r}
+R.version.string
+```
+
+Now install. The lines below are **commented out** with `#` so that knitting this document
+does not reinstall everything every time. Remove the `#` from the lines you need, run them
+**once**, then put the `#` back.
+
+```{r}
+# install.packages("ape")
+# install.packages("phangorn")
+# install.packages("phytools")
+# install.packages("geiger")
+# install.packages("maps")      # needed by phytools
+# install.packages("devtools")  # only if you want development versions (optional today)
+```
+
+> **MOI's note:** installing packages sometimes triggers a prompt
+> from RStudio asking to restart R. Say **No** — otherwise you have to load everything again.
+>
+> **MOI's note:** if an install fails, *read the message*. It usually names a different
+> package it could not find. Install that one first, then retry the one that failed.
+
+**Errors vs warnings.** A **warning** ("package was built under R version ...") is R telling
+you something you should know; the command still worked. An **error** means nothing happened.
+Only errors need fixing.
+
+Check what you have:
+
+```{r}
+packageVersion("ape")
+packageVersion("phangorn")
+packageVersion("phytools")
+packageVersion("geiger")
+```
+
+You want these versions or newer. `install.packages()` also pulls in every package your
+target depends on, which is why installing phytools takes a while — it is installing a small
+tree of other packages too.
+
+Now **load** the two we will use throughout:
+
+```{r}
+library(ape)       # Analysis of Phylogenetics and Evolution
+library(phytools)  # Liam Revell's tools, built on top of ape
+```
+
+`ape` is the foundation: almost every phylogenetics package in R reads and writes *ape*'s
+tree format. Learn `ape`, and the rest of the ecosystem opens up.
+
+---
+
+# From text to tree: the Newick format {#newick}
+
+In the lecture, a tree was a picture. On a computer, a tree has to be **text**. The standard
+is the **Newick format**, and it is simply nested parentheses.
+
+Read it like this:
+
+* **Names** are tips (species, sequences, OTUs).
+* **A pair of parentheses** groups whatever is inside it — that group shares a common
+  ancestor not shared with anything outside the parentheses. Parentheses = a node.
+* **Commas** separate the things joined at that node.
+* **A semicolon** ends the tree. (Forget it, and R will hang waiting for more input.)
+
+So `(A,B)` means "A and B are each other's closest relatives here", and `((A,B),C)` means
+"A and B join first; *then* that pair joins C".
+
+```{r}
+## a 'toy' vertebrate tree, written as one long Newick string
+text.string <-
+  "(((((((cow, pig),whale),(bat,(lemur,human))),(robin,iguana)),coelacanth),gold_fish),shark);"
+
+vert.tree <- read.tree(text = text.string)
+```
+
+Note the argument `text =`. `read.tree()` can take either `text =` (a string you typed) or
+`file =` (a file on disk). Same function, two doors in.
+
+> 💭 **Question 5.** Before plotting: according to that string, is **whale** more closely
+> related to **cow** or to **bat**? Trace the parentheses.
+>
+> *Answer: run* `reveal(5)` *(see the last section).*
+
+```{r}
+#reveal(5)
+```
+
+
+## Three ways to draw the same tree
+
+```{r}
+plot(vert.tree, no.margin = TRUE, edge.width = 2)
+```
+
+```{r}
+roundPhylogram(vert.tree)
+```
+
+```{r}
+plot(unroot(vert.tree), type = "unrooted", no.margin = TRUE,
+     lab4ut = "axial", edge.width = 2)
+```
+
+Three pictures, and — for the first two — **one tree**. The style is cosmetic:
+`no.margin`, `edge.width`, `lab4ut` ("labels for unrooted tree") only change ink.
+
+The third plot is different in kind, and this is the part that connects straight back to the
+lecture. `unroot()` **removes the root**. An unrooted tree still says who groups with whom,
+but it no longer says *which direction time runs*, so it no longer identifies ancestors and
+descendants, and "clade" stops being meaningful.
+
+This is exactly why the lecture counted **unrooted** topologies when it talked about
+exhaustive and branch-and-bound searches: parsimony and likelihood scores are computed on
+unrooted trees. Rooting is a separate step, done afterwards — usually with an **outgroup**
+(see §9.4).
+
+> 💭 **Question 6.** In the rooted plot, **shark** is at the bottom, alone. What role is
+> shark playing in this tree, and what would happen to the picture if you removed it?
+>
+> *Answer: run* `reveal(6)` *(see the last section).*
+
+> 💭 **Question 7.** Count the tips in the unrooted plot and in the rooted plot. Same number.
+> Now count the **internal nodes** in each. Why is there one fewer in the unrooted version?
+>
+> *Answer: run* `reveal(7)` *(see the last section).*
+
+---
+
+# Inside the `"phylo"` object {#phylo-object}
+
+## A tree is a list
+
+Everything in R is an object with a **class**, and the class tells other functions how to
+treat it. A tree read by `ape` is a **list** (§2.4) carrying the class label `"phylo"`.
+
+Type its name and you do *not* get the raw contents:
+
+```{r}
+vert.tree
+```
+
+What you see is a **summary**, produced by something called an S3 `print` method: R noticed
+the class was `"phylo"` and called `print.phylo()` instead of dumping the list. The same
+machinery is why `plot(vert.tree)` draws a phylogeny rather than a scatterplot — `plot()`
+looks at the class and dispatches to `plot.phylo()` from `ape`.
+
+To see what is really in the box, use `str()` (short for *structure*):
+
+```{r}
+str(vert.tree)
+```
+
+Read that as: a list of 3 compartments — `edge`, `Nnode`, `tip.label` — plus two attributes,
+`class` and `order`.
+
+## Decomposing a small tree
+
+Big trees are hard to inspect. Let's take a 5-tip tree apart.
+
+```{r}
+tree <- read.tree(text = "(((A,B),(C,D)),E);")
+plotTree(tree, offset = 1)
+tiplabels()
+nodelabels()
+```
+
+`tiplabels()` and `nodelabels()` print the **node numbers** onto the plot you just drew.
+(They add to the *current* plot, so they must be run right after `plotTree()`, in the same
+chunk — this is R's old "base graphics" way of working: draw, then add on top.)
+
+Look at the numbering convention:
+
+* **1 … N** are the **tips**, in the order they appear in `tip.label`.
+* **N+1** is always the **root**.
+* **N+2 …** are the remaining internal nodes.
+
+Now the `edge` matrix makes sense. Each **row is one branch**; column 1 is the node the
+branch starts at (towards the root), column 2 is the node it ends at (towards the tips).
+
+```{r}
+tree$edge
+```
+
+```{r}
+nrow(tree$edge)   # number of branches
+tree$tip.label    # the names, in node-number order
+tree$Nnode        # number of internal nodes
+class(tree)       # the label that makes plot() draw a tree
+```
+
+So: `edge` is the **topology**, `tip.label` maps numbers to names, `Nnode` counts the
+internal nodes. Everything else is optional.
+
+> 💭 **Question 8.** In `tree$edge`, find the row(s) that describe branches ending in a tip.
+> How can you spot them without looking at the plot?
+>
+> *Answer: run* `reveal(8)` *(see the last section).*
+
+> 💭 **Question 9.** This tree has 5 tips and 8 branches. A rooted, fully bifurcating tree
+> with *n* tips always has how many branches? Check your formula against `vert.tree`
+> (11 tips, 20 branches).
+>
+> *Answer: run* `reveal(9)` *(see the last section).*
+
+## Branch lengths are optional
+
+Notice what the summary said about `vert.tree`: *"Rooted; no branch lengths."*
+
+```{r}
+is.null(vert.tree$edge.length)
+```
+
+A `"phylo"` object **may** carry a fourth compartment, `edge.length` — a numeric vector, one
+value per row of `edge`. Without it you have a **cladogram**: branching order only. With it
+you have a **phylogram**: branching order *plus* an amount of evolution on each branch.
+
+This is the same distinction the lecture drew between the **topology** and the **branch
+lengths** as two separate things that a method estimates. A parsimony search returns a
+topology and a step count; a likelihood or distance method returns a topology *and* branch
+lengths in units of substitutions per site. The molecular clock section of the lecture was
+entirely about turning those branch lengths into time — impossible on a tree that has none.
+
+> 💭 **Question 10.** Why can you *not* test the molecular clock on `vert.tree` as it stands?
+>
+> *Answer: run* `reveal(10)` *(see the last section).*
+
+---
+
+# Reading and writing trees from files {#read-write}
+
+## Reading
+
+Real trees come from files. We will use `anole.tre`: 82 species of neotropical *Anolis*
+lizards.
+
+
+```{r}
+anolis.tree <- read.tree(file = "anole.tre")
+anolis.tree
+```
+
+Compare that summary with `vert.tree`'s: this one says **"includes branch lengths"**.
+
+```{r}
+plotTree(anolis.tree, ftype = "i", fsize = 0.6, lwd = 1)
+```
+
+```{r}
+Ntip(anolis.tree)     # how many species
+Nnode(anolis.tree)    # how many internal nodes
+head(anolis.tree$edge.length)   # first few branch lengths
+```
+
+`head()` shows the first few elements of anything — indispensable when an object has 162
+values and you only want a glimpse.
+
+> 💭 **Question 11.** 82 tips and 81 internal nodes. Using your rule from Question 9, is this
+> tree fully bifurcating? What would the number have been if it contained one polytomy of
+> three branches?
+>
+> *Answer: run* `reveal(11)` *(see the last section).*
+
+## Writing trees
+
+```{r}
+write.tree(tree, file = "example.tre")
+
+## read the raw file back as plain text, just to look at it
+cat(readLines("example.tre"), sep = "\n")
+```
+
+> **MOI's note:** this creates a text file called `example.tre` in your folder. Open it
+> in any text editor if you like — `cat(readLines(...))` above just prints its contents to the
+> console.
+
+`cat()` prints things *as they are*, without the `[1]` index or the quotes that `print()` adds.
+`sep = "\n"` puts each line on its own line.
+
+> 💭 **Question 12.** `write.tree()` saved the tree perfectly. But a real analysis usually
+> produces more than a topology — bootstrap values, posterior probabilities, a substitution
+> model. Which of these survives a round trip through a plain Newick file?
+>
+> *Answer: run* `reveal(12)` *(see the last section).*
+
+---
+
+# Plotting and manipulating trees {#manipulate}
+
+## Plot styles
+
+Same tree, different projections. First an **unrooted cladogram** — note
+`use.edge.length = FALSE`, which throws the branch lengths away for drawing purposes so that
+the topology is easier to see.
+
+```{r fig.width=8, fig.height=8}
+plot(unroot(anolis.tree), type = "unrooted", cex = 0.6,
+     use.edge.length = FALSE, lab4ut = "axial", no.margin = TRUE)
+```
+
+And a **circular ("fan")** tree, which is the standard way to fit a large rooted tree onto
+one page:
+
+```{r fig.width=8, fig.height=8}
+plotTree(anolis.tree, type = "fan", fsize = 0.7, lwd = 1, ftype = "i")
+```
+
+> 💭 **Question 13.** `use.edge.length = FALSE` makes every branch the same length. What have
+> you gained, and what have you just hidden from yourself?
+>
+> *Answer: run* `reveal(13)` *(see the last section).*
+
+## Finding particular tips
+
+The Puerto Rican anoles in this phylogeny are *A. cristatellus*, *A. cooki*, *A. poncensis*,
+*A. gundlachi*, *A. pulchellus*, *A. stratulus* and *A. evermanni* (which form a clade),
+plus *A. occultus* and *A. cuvieri*.
+
+The tip labels are full names like `"Anolis_cooki"`, but we only want to type the species
+epithets. `grep()` searches for a pattern in a character vector and returns the *positions*
+where it matched.
+
+```{r}
+grep("cooki", anolis.tree$tip.label)   # where does "cooki" occur?
+```
+
+To do that for ten species at once we use `sapply()`, which applies a function to every
+element of a vector and simplifies the result:
+
+```{r}
+pr.species <- c("cooki", "poncensis", "gundlachi", "pulchellus", "stratulus",
+                "krugi", "evermanni", "occultus", "cuvieri", "cristatellus")
+
+ii <- sapply(pr.species, grep, anolis.tree$tip.label)
+ii
+```
+
+Read `sapply(pr.species, grep, anolis.tree$tip.label)` as: *for each* element of
+`pr.species`, call `grep(<that element>, anolis.tree$tip.label)`. The third argument is
+simply passed along to `grep`. This "apply a function to everything in a vector" pattern
+replaces the `for` loops you would write in most other languages.
+
+Now turn positions back into names:
+
+```{r}
+pr.species <- anolis.tree$tip.label[ii]
+pr.species
+```
+
+And mark them on the tree:
+
+```{r fig.width=8, fig.height=8}
+plotTree(anolis.tree, type = "fan", fsize = 0.7, lwd = 1, ftype = "i")
+add.arrow(anolis.tree, tip = ii, arrl = 1)
+```
+
+> 💭 **Question 14.** Look at where the arrows land. Are the Puerto Rican anoles a single
+> clade? What would it mean, biologically, if a set of species from one island were **not**
+> monophyletic?
+>
+> *Answer: run* `reveal(14)` *(see the last section).*
+
+## Dropping tips and extracting clades
+
+`drop.tip()` removes tips and tidies up the tree that remains:
+
+```{r fig.width=8, fig.height=8}
+anolis.noPR <- drop.tip(anolis.tree, pr.species)
+plotTree(anolis.noPR, type = "fan", fsize = 0.7, lwd = 1, ftype = "i")
+Ntip(anolis.noPR)
+```
+
+`fastMRCA()` finds the **most recent common ancestor** of two tips — i.e. the node where
+their two paths back through the tree first meet — and `extract.clade()` keeps everything
+descending from that node.
+
+```{r}
+node <- fastMRCA(anolis.tree, "Anolis_evermanni", "Anolis_cristatellus")
+node
+pr.clade <- extract.clade(anolis.tree, node)
+plotTree(pr.clade, ftype = "i")
+```
+
+Or keep the species we want by dropping everything else. `setdiff(a, b)` returns "everything
+in `a` that is not in `b`":
+
+```{r}
+pr.tree <- drop.tip(anolis.tree,
+                    setdiff(anolis.tree$tip.label, pr.species))
+plotTree(pr.tree, ftype = "i")
+```
+
+> **MOI's note:** `collapseTree()` lets you prune interactively, but it must be run
+> **in the console**, not inside a chunk. Press `ESC` to leave interactive mode.
+
+```{r}
+# anolis.pruned <- collapseTree(anolis.tree)
+# plotTree(anolis.pruned, type = "fan", fsize = 0.7, lwd = 1, ftype = "i")
+```
+
+> 💭 **Question 15.** `pr.clade` has 8 tips; `pr.tree` has 10. Both are "the Puerto Rican
+> anoles". What is the difference between them, and which one would you use to ask *"how old
+> is the Puerto Rican radiation?"*
+>
+> *Answer: run* `reveal(15)` *(see the last section).*
+
+> 💭 **Question 16.** Does pruning change the relationships among the *remaining* species?
+> Reason it through with the `edge` matrix in mind, then check: does `anolis.noPR` still put
+> *Anolis_ahli* with *Anolis_allogus*?
+>
+> *Answer: run* `reveal(16)` *(see the last section).*
+
+---
+
+# Binary and polytomous trees {#polytomies}
+
+A node with more than two descendants is a **polytomy** (or multifurcation). Most
+phylogenetics functions assume a **binary** (fully bifurcating) tree, so it is worth checking.
+
+```{r}
+t1 <- read.tree(text = "((A,B,C),D);")
+plot(t1, type = "cladogram")
+```
+
+```{r}
+is.binary(t1)
+```
+
+> **Note on an old function name:** the original tutorial used `is.binary.tree()`. That name
+> is deprecated in current versions of ape — use `is.binary()`. If you meet code that still
+> calls the old name, this is why it warns.
+
+`multi2di()` ("multifurcation to dichotomy") resolves polytomies:
+
+```{r}
+t2 <- multi2di(t1)
+plot(t2, type = "cladogram")
+is.binary(t2)
+```
+
+**What does "randomly resolve" actually do?** It does not estimate anything and it uses no
+data. At the polytomy `(A,B,C)` there are three possible bifurcating resolutions —
+`((A,B),C)`, `((A,C),B)`, `((B,C),A)` — and `multi2di()` picks one at random, inserting a new
+internal node and a new branch of length **zero** (so the tree's total length is unchanged).
+Run it several times and you will get different answers:
+
+```{r}
+replicate(5, write.tree(multi2di(t1)))
+```
+
+A zero-length branch is the honest bookkeeping: the tree is now binary in *shape*, so
+functions that demand a binary tree will run, but the new node carries no evidence. Treat
+anything that depends on that node as unsupported.
+
+> 💭 **Question 17.** A polytomy in a published tree can mean two completely different things.
+> What are they, and which one does `multi2di()` assume?
+>
+> *Answer: run* `reveal(17)` *(see the last section).*
+
+---
+
+# Rotating and re-rooting {#rotate-reroot}
+
+## First: random trees, and `set.seed()`
+
+```{r}
+set.seed(1)          ## so that everyone gets the same "random" tree
+tree <- rtree(n = 40)
+```
+
+> **MOI's note:** `set.seed()` fixes a random process. R's random numbers are not
+> really random — they are produced by a deterministic recipe from a starting value, the
+> *seed*. Normally R takes the seed from the clock, so every run differs. Set the seed by hand
+> and everyone who runs the same code gets the same result, which makes a practical (or a
+> paper) reproducible. To see it: comment out `set.seed(1)`, run the chunk several times and
+> watch the tree change; then uncomment it and watch it stop changing.
+
+`rtree(n = 40)` **simulates** a random 40-tip tree with random branch lengths. It is not
+estimated from anything — it is a convenient toy for testing code.
+
+```{r fig.height=8}
+plotTree(tree, node.numbers = TRUE)
+```
+
+## Rotating: a different picture, the same tree
+
+```{r fig.height=8}
+rt.52 <- rotate(tree, 52)          ## rotate about node 52
+plotTree(rt.52)
+```
+
+```{r fig.height=8}
+rt.all <- rotateNodes(tree, "all") ## rotate every node
+plotTree(rt.all)
+```
+
+Rotating swaps which descendant is drawn above and which below. Nothing about ancestry
+changes — only the layout.
+
+## Re-rooting: a genuinely different tree
+
+```{r fig.height=8}
+rr.67 <- root(tree, node = 67)
+plotTree(rr.67)
+```
+
+Rooting **at a node** creates a trifurcation at the root (the root has no branch of its own to
+sit on). Usually you want to root **along a branch** instead — here, exactly halfway down the
+branch leading to node 65:
+
+```{r fig.height=8}
+rr.65 <- reroot(tree, 65,
+                position = 0.5 * tree$edge.length[which(tree$edge[, 2] == 65)])
+plotTree(rr.65)
+```
+
+Unpack that `position` argument, because it is a good example of R idiom:
+
+* `tree$edge[, 2] == 65` → a TRUE/FALSE vector: is this row's *ending* node 65?
+* `which(...)` → the row number where it is TRUE.
+* `tree$edge.length[...]` → the length of that branch.
+* `0.5 * ...` → halfway along it.
+
+> **MOI's note:** interactive re-rooting must be run in the console.
+
+```{r}
+# rr.interactive <- reroot(tree, interactive = TRUE)
+# plotTree(rr.interactive)
+```
+
+## Why rooting is the step that matters {#rooting-theory}
+
+The lecture spent a long time on rooting — the tree of life is drawn unrooted, and finding
+the root of it required the EF-Tu / EF-G gene duplication as an internal outgroup. Here is
+the operational version of that point:
+
+An **unrooted** tree says: *these are the groupings.*
+A **rooted** tree adds: *this one is the oldest split, and time flows this way.*
+
+The second claim is the one that lets you say "X is ancestral", "Y is a clade", "trait Z was
+gained here and lost there". None of those statements survive on an unrooted tree — and the
+data almost never place the root by themselves. You place it, with an **outgroup**: a taxon
+you already know branched off before all the others (shark for vertebrates; a lamprey for
+jawed fish; a distant species for a gene tree; a paralogue produced by a duplication, when
+nothing outside the group exists).
+
+```{r fig.height=6}
+## rooting a real tree with an outgroup, by name rather than node number
+vt <- read.tree(text = text.string)
+vt.unrooted <- unroot(vt)
+vt.rerooted <- root(vt.unrooted, outgroup = "shark", resolve.root = TRUE)
+plotTree(vt.rerooted, fsize = 0.9)
+```
+
+> 💭 **Question 18.** `rotate()` and `root()` both changed the picture. Which of the following
+> statements change when you *rotate*, and which change when you *re-root*?
+> (a) which species are sisters (b) which groups are clades (c) the order tips appear top to
+> bottom (d) the total tree length.
+>
+> *Answer: run* `reveal(18)` *(see the last section).*
+
+> 💭 **Question 19.** You root a gene tree with an outgroup that turns out to be *inside* your
+> ingroup (a misidentified sequence, say). What happens to your conclusions?
+>
+> *Answer: run* `reveal(19)` *(see the last section).*
+
+---
+
+# Comparing trees {#compare}
+
+Are two trees the same? `all.equal()` answers it for trees (again via the class: it dispatches
+to `all.equal.phylo()`).
+
+Predict each answer **before** you run the chunk.
+
+```{r}
+all.equal(tree, rt.all)    ## rotated nodes
+```
+
+```{r}
+all.equal(tree, rr.67)     ## re-rooted
+```
+
+```{r}
+all.equal(unroot(tree), unroot(rr.67))  ## both unrooted
+```
+
+Rotated trees are equal. Re-rooted trees are not — *unless* you unroot them both first, at
+which point the difference disappears, because rooting was the only difference.
+
+> **A caution:** the third comparison is flagged in Liam Revell's original tutorial as
+> behaving inconsistently across versions. Treat `all.equal()` on unrooted trees
+> as a check to verify, not to trust blindly.
+
+> 💭 **Question 20.** `all.equal()` gives you TRUE or FALSE. In practice you usually want to
+> know *how different* two trees are — a bootstrap tree vs the ML tree, a gene tree vs the
+> species tree. Why is a yes/no answer not enough?
+>
+> *Answer: run* `reveal(20)` *(see the last section).*
+
+## Going further (optional): Robinson–Foulds distance
+
+```{r}
+library(phangorn)
+
+RF.dist(tree, rt.all)              ## rotated: identical topology
+RF.dist(unroot(tree), unroot(rr.67))
+
+## how different is a random 40-tip tree from ours?
+set.seed(42)
+RF.dist(tree, rtree(n = 40, tip.label = tree$tip.label))
+```
+
+RF counts the splits that the two trees do not share, so 0 means "identical topology" and the
+maximum for an unrooted tree with *n* tips is 2n − 6 — which is roughly what two unrelated
+random trees will score. It is the number you would use to say "these two gene trees conflict
+a lot" rather than merely "they differ".
+
+
+---
+
+# Multiple trees: the `"multiPhylo"` object {#multiphylo}
+
+You very often have *many* trees rather than one: a bootstrap set, a posterior sample from a
+Bayesian analysis, one tree per gene, or replicate simulations. R stores these as a
+`"multiPhylo"` object — which is, as you might now guess, just a **list of `"phylo"` objects**
+wearing a different class label.
+
+```{r}
+anolis.trees <- c(anolis.tree, anolis.noPR, pr.clade, pr.tree)
+print(anolis.trees, details = TRUE)
+class(anolis.trees)
+```
+
+Because it is a list, you reach individual trees with **double** brackets:
+
+```{r}
+anolis.trees[[3]]          ## the third tree
+Ntip(anolis.trees[[3]])
+sapply(anolis.trees, Ntip) ## tip counts for all of them at once
+```
+
+(`[[ ]]` gets the *contents* of a list element; `[ ]` gets a shorter list. This trips up
+everyone at least once.)
+
+Many — not all — functions accept a `multiPhylo` where they accept a `phylo`:
+
+```{r}
+anolis.trees <- roundBranches(anolis.trees, digits = 1)   ## round all branch lengths
+write.tree(anolis.trees, file = "example.trees")
+```
+
+```{r}
+## one Newick string per line — look at just the first 120 characters of each
+substr(readLines("example.trees"), 1, 120)
+```
+
+> 💭 **Question 21.** Your Bayesian analysis returns 10,000 trees in a `multiPhylo` object.
+> Name two things you can compute from that set that you *cannot* get from a single tree.
+>
+> *Answer: run* `reveal(21)` *(see the last section).*
+
+---
+
+# Where this fits in the lecture {#wrap-up}
+
+| In the lecture | In R today |
+|---|---|
+| A tree topology | `tree$edge` — a two-column matrix of node numbers |
+| Species / OTUs | `tree$tip.label`, node numbers 1…N |
+| Branch lengths (substitutions per site) | `tree$edge.length`, optional |
+| Rooted vs unrooted | `root()`, `unroot()`, `reroot()` — and `Nnode` drops by 1 |
+| Outgroup rooting (shark; EF-Tu/EF-G) | `root(tree, outgroup = "shark")` |
+| Clade / monophyly | `fastMRCA()` + `extract.clade()` |
+| Soft vs hard polytomy | `is.binary()`, `multi2di()` |
+| Tree searches operate on unrooted trees | why the score is unchanged by `rotate()` |
+| Bootstrap / posterior sample of trees | `"multiPhylo"` |
+| Molecular clock, dating | needs `edge.length`; a cladogram cannot be tested |
+
+**You should now be able to:**
+
+- [ ] read a Newick string by eye and say which taxa are more closely related
+- [ ] explain what is inside a `"phylo"` object, and why a tree is "just a list"
+- [ ] read a tree from a file and write one back
+- [ ] prune tips, extract a clade, and say which of the two is monophyletic
+- [ ] tell the difference between a rotated tree and a re-rooted tree, and say which claims
+      change
+- [ ] state what `multi2di()` assumes when it resolves a polytomy
+- [ ] say why branch lengths, not topology, are what a molecular clock analysis needs
+
+---
+
+# Troubleshooting: the five errors you will actually meet {#troubleshooting}
+
+**`could not find function "read.tree"`**
+: The package is not loaded. Run `library(ape)`. Installing is not loading (§2.6).
+
+**`object 'vert.tree' not found`**
+: Either a typo/capitalisation difference, or you skipped the chunk that created it. Check the
+  **Environment** panel — if it is not listed, it does not exist. Run the earlier chunks in
+  order.
+
+**`cannot open the connection` / `No such file or directory`**
+: R is not looking where you think. Run `getwd()` and `list.files()`. Put your data next to
+  your `.Rmd`.
+
+**`unexpected symbol` / `unexpected ')'`**
+: A syntax slip — a missing comma, an unclosed quote, one bracket too many. RStudio marks the
+  line with a red 🛇 in the margin.
+
+**The console shows `+` instead of `>` and nothing happens**
+: R thinks your command is unfinished (open bracket, open quote, or a Newick string missing its
+  `;`). Press **Esc** to cancel and start again.
+
+---
+
+# Answers {#answers}
+
+The answers to the 21 questions are stored in this document, but they are **scrambled**, so
+reading the file will not give them away. To use them:
+
+1. Run the chunk below **once**, at the start of the session. It loads the answer key and
+   prints nothing.
+2. Whenever you want to check an answer, type `reveal(7)` in the console, using the number
+   of the question.
+
+Do this after you have written down your own answer. An answer you have already guessed
+teaches you something; an answer you read first teaches you nothing.
+
+```{r answer-key}
+.key <- c(
+  paste0(
+    "`3`. Jr qvq abg fhccyl `qvtvgf`, fb E hfrq vgf qrsnhyg, `qvtvgf = 0` - v.r. ebhaq gb n",
+    " jubyr ahzore. Qrsnhygf ner vaivfvoyr va lbhe pbqr ohg nyjnlf npgvir. Guvf znggref ",
+    "yngre: `cybgGerr()` unf n qbmra qrsnhygf, naq jura n cybg ybbxf bqq vg vf hfhnyyl n ",
+    "qrsnhyg, abg n oht."
+  ),
+  paste0(
+    "`gvcf[yratgu(gvcf)]`. Arfgvat shapgvbaf yvxr guvf - gur erfhyg bs bar orpbzrf gur ",
+    "nethzrag bs gur arkg - vf gur fvatyr zbfg pbzzba E vqvbz. Lbh jvyy hfr vg va frpgvba 7",
+    " nf `nabyvf.gerr$gvc.ynory[vv]`."
+  ),
+  paste0(
+    "E fvzcyvsvrf n fvatyr ebj be pbyhza gb n cynva irpgbe ol qrsnhyg, orpnhfr gung vf ",
+    "hfhnyyl jung lbh jnag. Vg fhecevfrf lbh jura n shapgvba rkcrpgf n gjb-pbyhza zngevk ",
+    "naq lbh unir nppvqragnyyl unaqrq vg n irpgbe bs yratgu 2 - n pynffvp fbhepr bs ",
+    "\"vapbeerpg ahzore bs qvzrafvbaf\" reebef. `z[2, , qebc = SNYFR]` xrrcf vg n zngevk."
+  ),
+  paste0(
+    "(1) Gur svyr vf abg va gur jbexvat qverpgbel - purpx `trgjq()` naq `yvfg.svyrf()`. (2)",
+    " Gur anzr vf abg jung lbh guvax vg vf: `nabyr.ger` if `nabyr.ger.gkg` (Jvaqbjf uvqrf ",
+    "xabja rkgrafvbaf), be n pncvgny yrggre qvssrerapr ba n pnfr-frafvgvir flfgrz. N guveq ",
+    "cbffvovyvgl: lbh arire qbjaybnqrq vg."
+  ),
+  paste0(
+    "Gb pbj. `((pbj, cvt), junyr)` chgf junyr jvgu gur pbj+cvt tebhc; ong bayl wbvaf zhpu ",
+    "shegure bhg, vafvqr `(ong,(yrzhe,uhzna))`. Guvf vf n erny ovbybtvpny pynvz: junyrf ner",
+    " negvbqnpglyf, arfgrq vafvqr gur rira-gbrq hathyngrf - n erfhyg gung zbecubybtl nybar ",
+    "tbg jebat sbe n ybat gvzr naq zbyrphyrf tbg evtug."
+  ),
+  paste0(
+    "Funex vf gur bhgtebhc - gur zbfg qvfgnagyl eryngrq gnkba, vapyhqrq fcrpvsvpnyyl fb ",
+    "gung gur ebbg pna or cynprq ba gur oenapu yrnqvat gb vg. Erzbir funex naq gur ",
+    "erznvavat gerr unf ab whfgvsvrq ebbg; E jbhyq fgvyy qenj bar (vg unf gb qenj ",
+    "fbzrguvat), ohg gur nccnerag \"svefg fcyvg\" jbhyq or na negrsnpg bs gur svyr, abg ",
+    "rivqrapr. Qenjvat n ebbgrq gerr qbrf abg zrna gur ebbg vf erny - n erpheevat genc jura",
+    " ernqvat choyvfurq svtherf."
+  ),
+  paste0(
+    "Haebbgvat qvffbyirf gur ebbg abqr naq zretrf vgf gjb qrfpraqvat oenapurf vagb bar. N ",
+    "ebbgrq ovanel gerr jvgu a gvcf unf a  1 vagreany abqrf; haebbgrq, vg unf a  2. Fnzr ",
+    "eryngvbafuvcf, bar yrff fgngrzrag nobhg gvzr."
+  ),
+  paste0(
+    "N oenapu raqf va n gvc jura gur inyhr va pbyhza 2 vf <= `Agvc(gerr)` (urer, <= 5). Gel",
+    " `gerr$rqtr[gerr$rqtr[, 2] <= Agvc(gerr), ]`. Guvf xvaq bs grfg - hfvat n pbaqvgvba ",
+    "vafvqr `[ ]` - vf ubj lbh fhofrg va E, naq vg vf jbegu cenpgvfvat ba fbzrguvat guvf ",
+    "fznyy."
+  ),
+  paste0(
+    "2a  2. Sbe a = 5: 8 (lrf). Sbe a = 11: 20 (lrf). (Abqrf: a gvcf + (a1) vagreany = 2a1,",
+    " naq rirel abqr rkprcg gur ebbg fvgf ng gur raq bs rknpgyl bar oenapu, fb 2a2 ",
+    "oenapurf.) Guvf vf gur ernfba gerr fcnpr rkcybqrf: rirel rkgen gvc nqqf oenapurf, naq ",
+    "gur ahzore bs cbffvoyr gbcbybtvrf tebjf snfgre guna snpgbevnyyl - juvpu vf jul gur ",
+    "yrpgher arrqrq oenapu-naq-obhaq naq urhevfgvp frnepurf ng nyy."
+  ),
+  paste0(
+    "Ab `rqtr.yratgu`. Gur pybpx ulcbgurfvf vf n pynvz nobhg engrf - gung ebbg-gb-gvc ",
+    "qvfgnapr vf rdhny sbe nyy gvcf (nf va Gnwvzn'f grfg, XNP  XOP = 0, be gur yvxryvubbq ",
+    "engvb grfg jvgu vgf a1 if 2a3 cnenzrgref). Jvgu ab oenapu yratguf gurer vf abguvat gb ",
+    "pbzcner. N pynqbtenz naq na hygenzrgevp pybpx gerr pna funer n gbcbybtl naq fnl ",
+    "pbzcyrgryl qvssrerag guvatf."
+  ),
+  paste0(
+    "Lrf - 81 = a  1, rknpgyl jung n ebbgrq ovanel gerr tvirf. N fvatyr gevshepngvba ",
+    "pbyyncfrf gjb abqrf vagb bar, fb jr jbhyq frr 80. Pbhagvat abqrf vf n dhvpx fnavgl ",
+    "purpx orsber ehaavat n zrgubq gung fvyragyl nffhzrf n ovanel gerr (frpgvba 8)."
+  ),
+  paste0(
+    "Gbcbybtl, oenapu yratguf naq gvc ynoryf fheivir. Abqr fhccbeg inyhrf pna or jevggra nf",
+    " abqr ynoryf (`gerr$abqr.ynory`), naq ncr jvyy xrrc gurz - ohg gurl ner whfg grkg va ",
+    "gur svyr, jvgu ab erpbeq bs jung gurl ner: 95 pbhyq or n obbgfgenc crepragntr, n ",
+    "cbfgrevbe cebonovyvgl k100, be na vagreany abqr anzr. Gur fhofgvghgvba zbqry, gur ",
+    "nyvtazrag naq gur yvxryvubbq fpber ner abg fgberq ng nyy. Guvf vf jul ARKHF svyrf naq ",
+    "wbheany fhccyrzragf rkvfg, naq jul lbh fubhyq arire eryl ba n oner `.ger` svyr gb ",
+    "qbphzrag na nanylfvf."
+  ),
+  paste0(
+    "Tnvarq: ernqnovyvgl - eryngvbafuvcf nzbat fubeg-oenapu gnkn orpbzr ivfvoyr. Uvqqra: ",
+    "nyy gur engr naq gvzr vasbezngvba. Va cnegvphyne lbh unir uvqqra ybat oenapurf, naq ",
+    "gur yrpgher'f ybat-oenapu nggenpgvba rknzcyr vf cerpvfryl n pnfr jurer gjb ybat ",
+    "oenapurf ner qenja gbtrgure ol ubzbcynfl. Vs lbh bayl rire ybbx ng pynqbtenzf lbh jvyy",
+    " arire abgvpr gung lbhe qngnfrg unf gur funcr gung znxrf cnefvzbal snvy."
+  ),
+  paste0(
+    "Gurl ner abg - frira bs gurz sbez n pynqr, ohg N. bpphyghf naq N. phivrev fvg ",
+    "ryfrjurer. Ovbybtvpnyyl, gung zrnaf gur vfynaq jnf pbybavfrq zber guna bapr, naq gur ",
+    "fcrpvrf ba vg qb abg nyy qrfpraq sebz n fvatyr pbybavfre. (Sbe Nabyvf guvf vf gur ",
+    "pynffvp erfhyg: gur fnzr rpbzbecuf ribyirq ercrngrqyl ba qvssrerag vfynaqf - ",
+    "pbairetrapr, abg funerq naprfgel. Gung pbapyhfvba vf bayl ninvynoyr orpnhfr gur gerr ",
+    "jnf ohvyg sebz frdhrapr qngn engure guna sebz gur zbecubybtl orvat rkcynvarq.)"
+  ),
+  paste0(
+    "`ce.pynqr` vf n zbabculyrgvp tebhc - n abqr naq rirelguvat orybj vg, fb vg pbagnvaf ",
+    "nyy qrfpraqnagf bs gung naprfgbe naq abguvat ryfr. `ce.gerr` vf n fryrpgvba bs gvcf: ",
+    "bpphyghf naq phivrev jrer tensgrq ba ol cehavat njnl rirelguvat orgjrra gurz naq gur ",
+    "erfg, fb gur oenapurf va `ce.gerr` ner abg oenapurf bs gur bevtvany gerr. Sbe na ntr ",
+    "dhrfgvba hfr `ce.pynqr` - nfxvat gur ntr bs n aba-zbabculyrgvp frg bs fcrpvrf vf ",
+    "nfxvat gur ntr bs fbzrguvat gung arire rkvfgrq nf n fvatyr yvarntr."
+  ),
+  paste0(
+    "Ab. Erzbivat gvcf qryrgrf ebjf sebz `rqtr` naq zretrf gur oenapurf yrsg qnatyvat ",
+    "(gurve yratguf ner nqqrq gbtrgure), ohg vg arire erneenatrf jub wbvaf jubz. Gung vf ",
+    "jul cehavat vf fnsr, naq nyfb jul vg vf abg gur fnzr nf er-ehaavat gur nanylfvf ba ",
+    "srjre gnkn - gnkba fnzcyvat pna punatr gur rfgvzngrq gerr, ohg vg pnaabg punatr na ",
+    "rkvfgvat bar."
+  ),
+  paste0(
+    "N fbsg cbylgbzl = \"jr qba'g xabj gur beqre\" - gur qngn jrer abg vasbezngvir rabhtu ",
+    "gb erfbyir vg (fubeg vagreany oenapu, gbb srj fvgrf, pbasyvpgvat fvtany). N uneq ",
+    "cbylgbzl = \"gurer trahvaryl jnf n fvzhygnarbhf fcyvg vagb guerr yvarntrf\", juvpu vf ",
+    "ovbybtvpnyyl ener ohg cbffvoyr va encvq enqvngvbaf. `zhygv2qv()` vzcyvpvgyl gerngf vg ",
+    "nf fbsg: vg nffhzrf n erfbyhgvba rkvfgf naq jr fvzcyl qba'g xabj vg, fb nal thrff vf ",
+    "nf tbbq nf nabgure. Vs gur cbylgbzl jrer uneq, sbepvat vg ovanel jbhyq or vairagvat n ",
+    "abqr gung arire rkvfgrq."
+  ),
+  paste0(
+    "Ebgngvat punatrf (p) bayl. Er-ebbgvat punatrf (o) - qenzngvpnyyl, orpnhfr pynqr ",
+    "zrzorefuvc vf qrsvarq eryngvir gb gur ebbg - naq pna punatr (n) sbe gur srj gnkn ",
+    "nqwnprag gb gur arj ebbg; vg yrnirf (q) hapunatrq, fvapr vg zbirf gur ebbg ohg arvgure",
+    " nqqf abe erzbirf ribyhgvba. (n) vf jbegu cnhfvat ba: \"fvfgre\" vf n ebbgrq pbaprcg, ",
+    "fb fgevpgyl vg vf bayl qrsvarq bapr n ebbg rkvfgf."
+  ),
+  paste0(
+    "Rirelguvat qbjafgernz bs gur ebbg vf jebat juvyr ybbxvat cresrpgyl pbaivapvat: gur ",
+    "\"rneyvrfg oenapuvat yvarntr\" vf na negrsnpg, tebhcf gung ner ernyyl pynqrf nccrne ",
+    "cnenculyrgvp, naq nal erpbafgehpgvba bs naprfgeny fgngrf vaurevgf gur reebe. Gur gerr ",
+    "vgfrys - gur haebbgrq gbcbybtl - znl or ragveryl pbeerpg. Guvf vf jul gur pubvpr bs ",
+    "bhgtebhc vf na nethzrag gung unf gb or znqr rkcyvpvgyl, abg n qrsnhyg."
+  ),
+  paste0(
+    "Orpnhfr nyzbfg rirel cnve bs rfgvzngrq gerrf vf \"abg rdhny\", naq gung gryyf lbh ",
+    "abguvat nobhg jurgure gurl qvfnterr nobhg bar funxl gvc be nobhg gur jubyr onpxobar. ",
+    "Lbh jnag n qvfgnapr orgjrra gbcbybtvrf. Gur fgnaqneq vf gur Ebovafba-Sbhyqf qvfgnapr: ",
+    "gur ahzore bs fcyvgf (ovcnegvgvbaf) cerfrag va bar gerr naq abg gur bgure. Frr gur ",
+    "bcgvbany obk orybj."
+  ),
+  paste0(
+    "Nalguvat nobhg hapregnvagl: gur cbfgrevbe cebonovyvgl bs n pynqr (gur senpgvba bs ",
+    "gerrf pbagnvavat vg - gur ahzoref ba gur abqrf bs gur dhnttn svther va gur yrpgher), n",
+    " perqvoyr vagreiny ba n qviretrapr gvzr, be gur cebcbegvba bs gerrf fhccbegvat bar ",
+    "gbcbybtl bire n eviny. N fvatyr gerr vf n cbvag rfgvzngr naq, ba vgf bja, tvirf ab jnl",
+    " gb gryy n jryy-fhccbegrq abqr sebz n pbva syvc. `ncr::pbafrafhf()` naq ",
+    "`cunatbea::znkPynqrPerq()` ner jurer lbh jbhyq tb arkg."
+  )
+)
+
+reveal <- function(n) {
+  if (!n %in% seq_along(.key)) stop("There are only ", length(.key), " questions.")
+  txt <- chartr("A-Za-z", "N-ZA-Mn-za-m", .key[n])   # un-scramble (a Caesar shift of 13)
+  cat(strwrap(paste0("Q", n, ". ", txt), width = 90), sep = "\n")
+}
+```
+
+Try it now:
+
+```{r}
+reveal(1)
+```
+
+<small>The scrambling is ROT13: every letter is shifted 13 places along the alphabet, and
+shifting again brings it back. `chartr()` does character-by-character translation - the same
+idea you would use to complement a DNA sequence with
+`chartr("ACGT", "TGCA", "ATTGC")`. Try that one too.</small>
+
+---
+
+*Original tutorial by Liam J. Revell (last updated 31 July 2017), adapted by Moisès Coll Macià.
+Explanatory sections, R-basics scaffolding and discussion questions added for this practical.
+Further reading: the CRAN Phylogenetics Task View, <http://blog.phytools.org>, and the manuals
+for* ape*,* phytools *and* phangorn.
