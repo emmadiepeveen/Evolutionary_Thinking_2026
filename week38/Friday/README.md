@@ -28,11 +28,10 @@ In this section, I'll post to some useful links to download, install and learn R
 
 ### 2. Phylogenetics in R with `ape`
 
-Once you are more confident with R, you can follow the introduction to the `ape` package to analyse phylogenetic data in R. For that, you should download the [Week39download.zip](Week39download.zip) and open the `ape_intro.Rmd`. This gives you a brief overview of how to play with tree structures in R and what you can do. Note that when I wanted to comment on something, I write it as:
+Once you are more confident with R, you can follow the introduction to the `ape` package to analyse phylogenetic data in R. For that, you should download the ape_intro_tutorial.Rmd. This gives you a brief overview of how to play with tree structures in R and what you can do. 
 
-> MOI: this is a Moi comment
-
-You can check my output [here](ape_intro.md).
+There are some question in the tutorial. All the answers are also there, scroll down to the end of the notebook to be able to reveal the answers. 
+Some of the questions may seem very easy - the main purpose of these is to make you stop for a second and think about what you are doing and resist the temptation to simply run through the notebook without gaining any knowledge. Please discuss your answers in teams.
 
 
 ### 3. Phylogenetics in R with `ggtree`
