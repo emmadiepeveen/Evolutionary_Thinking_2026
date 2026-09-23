@@ -2,7 +2,7 @@
 
 [slides for today](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week39/Wednesday/Week%2039_presentationWednesday.pdf)
 
-some slides by a previous PhD student (these slides have a bit more focus on coalesence):(slides.pdf)
+[(some slides by a previous PhD student (these slides have a bit more focus on coalesence)]:(https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week39/Wednesday/slides.pdf)
 
 ## Work plan
 
