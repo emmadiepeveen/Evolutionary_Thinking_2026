@@ -1,8 +1,8 @@
-# Wednesday Week46 - Archaic Introgression
+# Wednesday Week46 - Yersinia pests
 
 ## Work plan
 
-[slides](https://github.com/cpantea/Evolutionary_Thinking_2023/blob/main/week46/Wednesday/Week46_Wed.pdf) for today
+[slides](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week46/Wednesday/Week%2046_presentationWednesday2026.pdf) for today
 
 We are going to discuss a paper about the plaque-causing bacteria Yersinia pestis throughout Eurasian history:
 
