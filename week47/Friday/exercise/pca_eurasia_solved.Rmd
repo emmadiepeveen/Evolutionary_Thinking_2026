@@ -1,0 +1,1438 @@
+---
+title: "PCA of ancient and modern Eurasians — solved version"
+subtitle: "Evolutionary Thinking — week 47, Friday"
+output:
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 3
+    theme: flatly
+    df_print: paged
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE,
+                      fig.width = 8, fig.height = 5.5, dpi = 110)
+```
+
+Today we read a PCA instead of running one. You get the **output** of a principal components
+analysis of ~1,000 West Eurasian and ~300 East Eurasian individuals, part of it ancient DNA, and
+your job is to work out what the plot is telling you about European and Siberian population history.
+
+The West Eurasian analysis recreates the PCA in
+[Mathieson et al. (2015), *Nature* 528:499–503](https://doi.org/10.1038/nature16152),
+*Genome-wide patterns of selection in 230 ancient Eurasians*. You don't have to read the paper, but
+we will compare our plot to the one in its Figure 1.
+
+**By the end of this document you should be able to:**
+
+1. Explain what each number in the data file is: what one row, one `PC` column and one point in the
+   plot represent.
+2. Explain what *projection* means and why ancient samples are projected onto modern variation
+   rather than used to compute the axes.
+3. Read a PCA plot: what the axes mean, what they *don't* mean, and why in this dataset you
+   **cannot** judge a PC's importance from how wide the cloud looks.
+4. Say which real population-genetic processes put the West Eurasian clusters where they are.
+5. Judge for yourself when a higher PC still carries population signal and when it is just noise.
+6. Spot a data error by plotting before testing — this dataset contains some.
+
+> **This is the solved version**: every exercise is already filled in, so you can run or knit the
+> whole file and concentrate on the interpretation. The answers to the hand-in questions are not in
+> here — those are yours to write.
+>
+> The version with the exercises left open is [`pca_eurasia.Rmd`](pca_eurasia.Rmd).
+
+Sections 1–5 build the ideas; Sections 6–10 are the hand-in questions.
+
+---
+
+# 0. Setup
+
+## 0.1 Packages
+
+We need **ggplot2** for the plots; everything else is base R.
+
+```{r packages}
+# install.packages("ggplot2")   # run once, if you don't have it yet
+library(ggplot2)
+
+theme_set(theme_bw(base_size = 11))
+```
+
+<details>
+<summary><b>📦 R refresher: the base-R syntax used here (open if you're rusty)</b></summary>
+
+```r
+nrow(df); ncol(df); dim(df)       # size of a data frame
+head(df)                          # first 6 rows
+names(df)                         # the column names
+str(df)                           # structure: column types and first few values
+df$PC1                            # one column, as a vector
+df[, c("PC1", "PC2")]             # two columns, as a data frame
+
+subset(df, POP == "Finnish")           # keep rows where POP is exactly "Finnish"
+subset(df, POP %in% c("Finnish", "Czech"))   # ... one of several values
+subset(df, ModAnc != "Modern")         # "!=" means "is not"
+
+unique(df$POP)                    # the different values in a column
+length(unique(df$POP))            # how many different values
+table(df$POP)                     # how often each value occurs
+sort(table(df$POP), decreasing = TRUE)   # ... most common first
+
+aggregate(PC1 ~ POP, data = df, FUN = mean)            # mean of PC1 per population
+aggregate(cbind(PC1, PC2) ~ POP, data = df, FUN = mean)  # several columns at once
+tapply(df$PC1, df$POP, mean)      # the same thing, as a named vector
+
+merge(a, b, by = "IND")           # join two data frames on a shared column
+cor.test(df$PC1, df$Latitude)     # correlation coefficient, p-value and CI
+```
+
+A `TODO` in a chunk is a **placeholder you need to replace**. The check chunks below the exercises
+will tell you if you forgot one.
+
+</details>
+
+```{r helpers}
+# A sentinel for the exercises: anything still set to TODO has not been done yet.
+TODO <- structure(list(), class = "todo")
+print.todo <- function(x, ...) cat("<TODO: replace this with your own code>\n")
+
+check <- function(condition, hint_if_wrong) {
+  if (!isTRUE(condition)) stop("Not quite yet - ", hint_if_wrong, call. = FALSE)
+  cat("✅ Looks good!\n")
+}
+
+check_todo <- function(...) {
+  values <- list(...)
+  for (nm in names(values)) {
+    if (inherits(values[[nm]], "todo")) {
+      stop("`", nm, "` is not ready yet: it is still set to the placeholder `TODO`. ",
+           "Finish the exercise that makes `", nm, "`, run that chunk, then run this one again.",
+           call. = FALSE)
+    }
+  }
+}
+
+# Round only the numeric columns of a data frame. `round()` alone fails on a table that
+# also has a text column, which is what `aggregate()` hands back.
+round_num <- function(df, digits = 4) {
+  is_num <- vapply(df, is.numeric, logical(1))
+  df[is_num] <- round(df[is_num], digits)
+  df
+}
+```
+
+## 0.2 Getting the data
+
+The three data files are plain tab-separated text, ~140 kB in total. The chunk below looks for them
+in a `data/` folder next to this file or one folder up (where they live in the course repository),
+and downloads them from GitHub if it can't find them. You don't need to change anything here.
+
+```{r data}
+data_files <- c("dataWE.txt", "dataEE.txt", "dataWE_LatLong.txt")
+repo_raw <- "https://raw.githubusercontent.com/emmadiepeveen/Evolutionary_Thinking_2026/main/week47/Friday/"
+
+find_or_download_data <- function() {
+  for (folder in c("data", "../data", ".")) {
+    if (all(file.exists(file.path(folder, data_files)))) {
+      cat("Found the data in:", normalizePath(folder), "\n")
+      return(folder)
+    }
+  }
+
+  cat("Data not found locally - downloading (~140 kB)...\n")
+  dir.create("data", showWarnings = FALSE)
+  for (name in data_files) {
+    ok <- tryCatch({
+      download.file(paste0(repo_raw, "data/", name), file.path("data", name), quiet = TRUE)
+      TRUE
+    }, error = function(e) FALSE)
+    if (!ok) {
+      # fall back to the zipped copies one level up in the repository
+      tmp <- tempfile(fileext = ".zip")
+      download.file(paste0(repo_raw, name, ".zip"), tmp, mode = "wb", quiet = TRUE)
+      unzip(tmp, files = name, exdir = "data", junkpaths = TRUE)
+    }
+    cat("  downloaded", name, "\n")
+  }
+  "data"
+}
+
+data_dir <- find_or_download_data()
+```
+
+## 0.3 Where the hand-in questions are answered
+
+| Hand-in question | Section |
+|---|---|
+| 1. PC1 vs PC2 of the West Eurasian data, coloured by `ModAnc` | 4 |
+| 2. English, Norwegian, Finnish, Icelandic | 6 |
+| 3. Four populations of your choice | 6 |
+| 4. PC3 vs PC4 of those four | 7 |
+| 5. Combinations of PC5–PC10, and why | 7 |
+| 6. Correlate latitude/longitude with PC1 and PC2 | 8 |
+| 7. PC1 vs PC2 of the East Eurasian data | 9 |
+| 8. PC3 vs PC4 of the East Eurasian data | 9 |
+| 9. Which aDNA artefacts make ancient samples unsuitable for computing PCs | 2 and 10 |
+| 10. What other data can you analyse with PCA | 10 |
+
+Each one is marked **📝 Hand-in question N**. Everything else is there to make those answerable.
+
+---
+
+# 1. What a PCA actually did to these data
+
+You met PCA in week 44 on goat genotypes. Here is the same idea in four sentences, because
+everything in this document depends on it.
+
+**Start from the genotype matrix.** Every individual was genotyped at hundreds of thousands of
+**SNPs** (positions in the genome where people differ by a single DNA letter). At each SNP you store
+how many copies of one chosen allele the individual carries: `0`, `1` or `2`. So each individual is
+one row of a huge table of 0s, 1s and 2s.
+
+**That makes each individual a point in a space with one dimension per SNP.** With 500,000 SNPs,
+each person is a point in 500,000-dimensional space. Two people with similar genomes sit close
+together in that space, because they have similar genotypes at most SNPs.
+
+**PCA finds the directions in which that cloud of points is most stretched out.** The direction of
+greatest spread is **PC1**. The direction of greatest remaining spread, at right angles to PC1, is
+**PC2**, then PC3, and so on. These directions are combinations of all the SNPs at once, not single
+SNPs.
+
+**The `PC1` and `PC2` columns in your data file are where each individual falls along those
+directions.** Projecting a 500,000-dimensional cloud onto its two most-stretched directions is the
+most informative flat picture of it you can draw — like choosing the angle to photograph a sculpture
+from so you lose as little of its shape as possible.
+
+The important consequence: **the axes have no units and no intrinsic meaning.** Nobody designed PC1
+to be "north–south" or "farmer ancestry". It came out of the data as "the direction along which
+these particular individuals differ most". What it *means* is something you work out afterwards, by
+looking at which populations sit at its ends. We will do exactly that in Section 4.
+
+### ❓ Question: Check your understanding
+
+1. Two individuals end up at almost the same point in the PC1–PC2 plot. What does that tell you?
+2. The sign of a PC is arbitrary: software could return `PC1` or `-PC1` and both are equally
+   correct. What does that mean for how you describe a plot?
+3. Suppose you add 200 more Finnish individuals to the dataset and re-run the PCA. Could the axes
+   change?
+
+<details>
+<summary><b>✅ Reveal answer</b></summary>
+
+1. It tells you their genotypes are similar **in the directions PC1 and PC2 describe** — usually
+      read as "similar genome-wide ancestry". It does **not** necessarily mean that they are closely
+   related, or that they come from the same place, or that they are similar in the directions
+   PC3, PC4, … describe.
+2. Say "Population A and B sit at **opposite ends** of PC1", not "A has a high PC1". If you re-ran
+   the analysis the plot might come out mirrored, and that would mean nothing. Only relative
+   positions carry information.
+3. Yes. PCA finds the directions of greatest spread **in the sample you give it**.
+   Over-representing one population makes the differences involving that population a bigger share
+   of the total    spread, so an axis can rotate towards it.
+
+</details>
+
+---
+
+# 2. Where these numbers came from, and why you're not computing them
+
+## 2.1 smartPCA
+
+The analysis was run with `smartPCA` from the [Eigensoft](https://github.com/DReichLab/EIG)
+package, the standard tool for this in human population genetics.
+We are **not** running it today — it needs the full genotype data.
+
+`smartPCA` reads a parameter file pointing at four inputs:
+
+| Input | Contents |
+|---|---|
+| `.geno` | The genotype matrix: individuals left to right, SNPs top to bottom. |
+| `.snp` | One line per SNP: name, chromosome, genetic position, physical position, reference allele, alternative allele. |
+| `.ind` | One line per individual: individual name, sex (`M`/`F`/`U`), population name. |
+| *population list* | **The list of populations whose individuals are used to compute the PCs.** |
+
+
+## 2.2 The population list, and projection
+
+Why not compute the axes from everybody?
+
+**First off:** there are too many individuals and the computation gets slow.
+
+**But the real reason:** Ancient samples have systematic problems that modern samples don't:
+
+* **Low coverage and lots of missing data.** Each ancient genome is sequenced shallowly, so many
+  genotypes are missing or uncertain, and the pattern of missingness differs between samples.
+* **Post-mortem damage.** Cytosine deaminates to uracil over time, which is read as a C→T change
+  (and G→A on the other strand). Older or worse-preserved samples carry more of these errors.
+* **Contamination** with modern human DNA from excavators and lab staff, and with environmental
+  microbial DNA.
+* **Reference bias.** Short, damaged reads map more readily to the reference allele, so
+  heterozygotes get under-called, and the direction of the error depends on read length.
+* **Batch effects.** Different labs, extraction protocols, capture panels and sequencing runs leave
+  their own fingerprints.
+
+Here is the problem: these artefacts are **shared by samples processed similarly** and **not shared
+with modern samples**. They are a large, consistent source of variation. PCA finds the directions of
+greatest variation — so if you let ancient samples define the axes, a leading PC can easily end up
+describing *sequencing batch* or *how degraded the sample is* rather than ancestry. You would get a
+beautiful plot of your laboratory's history.
+
+**The fix is projection.** The PCs are computed from the modern populations in the population list
+only. Then **every** individual, ancient ones included, is placed on those already-fixed axes by
+taking their genotypes and working out where they fall along each direction. The ancient samples get
+coordinates in the plot without having had any say in where the axes point.
+
+This is a genuine trade-off, not a free lunch. Ancient populations may carry variation that no
+modern population has, and projection is blind to it by construction: an axis that was never drawn
+cannot show you anything. Projection also **shrinks** projected points towards the origin — the more
+missing data a sample has, the more it shrinks — so an ancient individual sitting between two modern
+clusters is not automatically admixed between them. In practice, avoiding the artefacts is worth
+more than the lost variation, and the approach breaks down only once the samples get so old and so
+distant from modern variation that the modern axes are no longer informative about them.
+
+# 3. The West Eurasian data
+
+## 3.1 Reading the file
+
+`dataWE.txt` is tab-separated with a header line.
+
+```{r read-we}
+dataWE <- read.table(file.path(data_dir, "dataWE.txt"), sep = "\t", header = TRUE)
+
+cat("rows (individuals), columns:", dim(dataWE), "\n")
+head(dataWE)
+```
+
+Each **row is one individual**. The columns are:
+
+| Column | Meaning |
+|---|---|
+| `IND` | The individual's ID. Modern individuals have IDs like `abh24.HO`; ancient ones like `RISE507` or `I0061`. |
+| `PC1` … `PC10` | Where that individual falls along each of the first ten principal components. |
+| `POP` | The population the individual is assigned to. |
+| `ModAnc` | A grouping of the populations — see below, it is not what you'd expect. |
+
+### 📝 TODO: Get a feel for the dataset
+
+Work out:
+
+1. how many individuals there are in total (`n_individuals`),
+2. how many different populations (`n_populations`),
+3. which populations have the most individuals (show the top 10).
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+* `nrow(df)` is the number of rows.
+* `length(unique(df$col))` counts how many *different* values a column has.
+* `sort(table(df$col), decreasing = TRUE)` counts how often each value occurs, most common first.
+  Wrap it in `head(..., 10)` to keep the first ten.
+
+</details>
+
+```{r solved-feel}
+n_individuals <- nrow(dataWE)
+n_populations <- length(unique(dataWE$POP))
+
+cat("Individuals:", n_individuals, "\n")
+cat("Populations:", n_populations, "\n")
+
+head(sort(table(dataWE$POP), decreasing = TRUE), 10)
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+n_individuals <- nrow(dataWE)
+n_populations <- length(unique(dataWE$POP))
+
+cat("Individuals:", n_individuals, "\n")
+cat("Populations:", n_populations, "\n")
+
+head(sort(table(dataWE$POP), decreasing = TRUE), 10)
+```
+
+997 individuals in 89 populations. The largest are `Turkish` (56), `Spanish` (53), `Druze` (39) and
+`Palestinian` (38) — and note that the fifth largest, `Central_LNBA` (35), is an *ancient* group.
+
+Look at the tail, though: the **median population has only 9 individuals**, 72 of the 89 have fewer
+than 15, and 50 have fewer than 10. Two consequences worth carrying with you:
+
+* A cluster of four points is four people. Don't read much into exactly where it sits.
+* The populations are very unevenly sampled, and Section 1 told you that over-representing a
+  population pulls the axes towards it. 56 Turkish and 53 Spanish individuals have more say in where
+  PC1 points than 7 Finnish ones do.
+
+</details>
+
+## 3.2 The `ModAnc` column
+
+```{r modanc}
+table(dataWE$ModAnc)
+```
+
+They are **archaeological/ancestry groupings**:
+
+| `ModAnc` | Who | Roughly when |
+|---|---|---|
+| `Modern` | Present-day West Eurasians. **These are the individuals the PCs were computed from.** Everything else is projected. | today |
+| `Hunter-gatherer` | Western and Scandinavian Mesolithic hunter-gatherers (`WHG`, `Motala_HG`) | ~9,000–5,000 BCE |
+| `EHG` | **E**astern European **h**unter-**g**atherers, from Karelia and the Samara region | ~8,000–5,000 BCE |
+| `Early-farmer` | Neolithic farmers of Anatolian origin and their European descendants (`Anatolia_Neolithic`, `LBK_EN`, `Iberia_EN`/`MN`, `Hungary_EN`, `Central_MN`, `Remedello`, `Iberia_Chalcolithic`, and the Iceman) | ~7,000–2,500 BCE |
+| `Steppe` | Bronze Age pastoralists of the Pontic–Caspian steppe (`Yamnaya`, `Afanasievo`, `Poltavka`, `Sintashta`, `Andronovo`, `Srubnaya`) **and** the later central/northern European groups that carry steppe ancestry (`Central_LNBA` ≈ Corded Ware, `Bell_Beaker_LN`, `Northern_LNBA`, `Hungary_BA`) | ~3,300–1,000 BCE |
+| `Samara_Eneolithic` | Two Copper Age individuals from the Samara region, left as their own category | ~5,000–4,000 BCE |
+
+Let's see how the populations sit inside these categories.
+
+```{r pops-by-group}
+# one row per (ModAnc, POP) combination, with the number of individuals
+by_group <- as.data.frame(table(dataWE$ModAnc, dataWE$POP))
+names(by_group) <- c("ModAnc", "POP", "n")
+by_group <- by_group[by_group$n > 0, ]
+by_group[order(by_group$ModAnc, by_group$POP), ]
+```
+
+### Two things in this output are data errors, not biology
+
+Look carefully at the population names and you will spot:
+
+**1. Some names are mangled: `Modernaltese`, `Modernordovian`, `Modernotala_HG`.** These are
+`Maltese`, `Mordovian` and `Motala_HG`. At some point somebody replaced the letter `M` with the word
+`Modern` across the whole file — presumably turning a `ModAnc` column that said `M` into one that
+said `Modern` — and the replacement also hit every population name starting with `M`. No other
+letter was affected, which is why `Anatolia_Neolithic` survived intact.
+
+**2. `Anatolia_Neolithic` appears in two `ModAnc` groups** (21 individuals as `Early-farmer`, 3 as
+`Steppe`), and `Samara_Eneolithic` appears both as its own `ModAnc` and inside `Steppe`. These are
+labelling inconsistencies in how the file was assembled. Anatolian Neolithic individuals are early
+farmers; the three filed under `Steppe` are mislabelled.
+
+Neither error affects the PC values themselves — the coordinates are fine, only the labels are
+wrong. We will fix the names, leave the duplicated `ModAnc` assignment alone (it is three
+individuals out of 997), and note it when it matters.
+
+### 📝 TODO: Fix the mangled population names
+
+Overwrite `dataWE$POP` so that `Modernaltese` → `Maltese`, `Modernordovian` → `Mordovian`,
+`Modernotala_HG` → `Motala_HG`.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+A named vector is a handy lookup table. `name_fixes` below maps old names to new ones:
+
+```r
+hits <- dataWE$POP %in% names(name_fixes)       # which rows need fixing
+dataWE$POP[hits] <- name_fixes[dataWE$POP[hits]]
+```
+
+(Avoid `gsub("M", "Modern", ...)` — whole-value replacement is the safe tool here.)
+
+</details>
+
+```{r solved-names}
+name_fixes <- c(Modernaltese = "Maltese",
+                Modernordovian = "Mordovian",
+                Modernotala_HG = "Motala_HG")
+
+hits <- dataWE$POP %in% names(name_fixes)
+dataWE$POP[hits] <- name_fixes[dataWE$POP[hits]]
+
+sort(grep("^M", unique(dataWE$POP), value = TRUE))
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+name_fixes <- c(Modernaltese = "Maltese",
+                Modernordovian = "Mordovian",
+                Modernotala_HG = "Motala_HG")
+
+hits <- dataWE$POP %in% names(name_fixes)
+dataWE$POP[hits] <- name_fixes[dataWE$POP[hits]]
+
+sort(grep("^M", unique(dataWE$POP), value = TRUE))
+```
+
+</details>
+
+---
+
+# 4. The headline plot
+
+## 4.1 Helpers for plotting PCs
+
+`.data[[x]]` inside `aes()` is how you tell ggplot "the column whose *name* is in the variable `x`",
+rather than a column literally called `x`.
+
+```{r plot-helpers}
+plot_pcs <- function(df, x = "PC1", y = "PC2", colour = "POP", title = NULL, size = 1.8) {
+  ggplot(df, aes(x = .data[[x]], y = .data[[y]], colour = .data[[colour]])) +
+    geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey88") +
+    geom_vline(xintercept = 0, linewidth = 0.3, colour = "grey88") +
+    geom_point(size = size, alpha = 0.85) +
+    labs(x = x, y = y, colour = colour, title = title)
+}
+
+# Stack several PC pairs into one long table, so they can be drawn as facets of one plot.
+# `pairs` is a list of two-element character vectors, e.g. list(c("PC1","PC2"), c("PC3","PC4")).
+pc_pairs_long <- function(df, pairs, colour = "POP") {
+  labels <- vapply(pairs, function(p) paste(p[1], "vs", p[2]), character(1))
+  stacked <- do.call(rbind, Map(function(p, lab) {
+    data.frame(x = df[[p[1]]], y = df[[p[2]]],
+               group = df[[colour]], pair = lab)
+  }, pairs, labels))
+  stacked$pair <- factor(stacked$pair, levels = labels)
+  stacked
+}
+
+plot_pc_pairs <- function(df, pairs, colour = "POP", title = NULL, free_scales = FALSE) {
+  stacked <- pc_pairs_long(df, pairs, colour)
+  ggplot(stacked, aes(x = x, y = y, colour = group)) +
+    geom_hline(yintercept = 0, linewidth = 0.3, colour = "grey88") +
+    geom_vline(xintercept = 0, linewidth = 0.3, colour = "grey88") +
+    geom_point(size = 1.8, alpha = 0.85) +
+    facet_wrap(~ pair, nrow = 1, scales = if (free_scales) "free" else "fixed") +
+    labs(x = NULL, y = NULL, colour = colour, title = title)
+}
+
+cat("plot_pcs, pc_pairs_long and plot_pc_pairs are defined.\n")
+```
+
+## 4.2 📝 Hand-in question 1: PC1 vs PC2, coloured by `ModAnc`
+
+Plot the first two principal components of `dataWE`, with one colour per `ModAnc` group.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+One line: `plot_pcs(dataWE, colour = "ModAnc", title = "...")`.
+
+(`x = "PC1"` and `y = "PC2"` are already the defaults.)
+
+</details>
+
+```{r solved-q1, fig.width=8.5, fig.height=6}
+plot_pcs(dataWE, x = "PC1", y = "PC2", colour = "ModAnc",
+         title = "West Eurasian PCA: modern individuals and projected ancient groups")
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+plot_pcs(dataWE, x = "PC1", y = "PC2", colour = "ModAnc",
+         title = "West Eurasian PCA: modern individuals and projected ancient groups")
+```
+
+</details>
+
+## 4.3 Reading the plot
+
+You should see a large arc or crescent of `Modern` individuals, with the ancient groups falling
+inside and along it. This is the structure in Figure 1 of Mathieson et al. (2015), and the reason it
+is such a famous plot is that **the ancient groups land in interpretable places**.
+
+To interpret the axes: look at which populations sit at the ends.
+Because the modern individuals define the axes, we look at *their* extremes.
+
+```{r axis-extremes}
+PCS <- paste0("PC", 1:10)
+
+modern <- subset(dataWE, ModAnc == "Modern")
+
+# mean of every PC within every modern population
+pop_means <- aggregate(modern[, PCS], by = list(POP = modern$POP), FUN = mean)
+rownames(pop_means) <- pop_means$POP
+
+describe_axis <- function(pc, n = 5) {
+  ordered <- pop_means[order(pop_means[[pc]]), ]
+  fmt <- function(rows) paste(sprintf("%s (%+.3f)", rows$POP, rows[[pc]]), collapse = ", ")
+  cat(pc, "\n",
+      "  one end:   ", fmt(head(ordered, n)), "\n",
+      "  other end: ", fmt(tail(ordered, n)), "\n\n", sep = "")
+}
+
+for (pc in c("PC1", "PC2")) describe_axis(pc)
+```
+
+That gives the axes their meaning:
+
+* **PC1** runs from the **northeast European** populations (Lithuanian, Estonian, Finnish, Russian)
+  at one end to the **Arabian peninsula and Near East** (Bedouin, Yemenite Jews, Saudi) at the
+  other. It is essentially the southeast–northwest cline of West Eurasian variation.
+* **PC2** separates the **Caucasus** (Abkhasian, North Ossetian, Chechen, Georgian, Lezgin) from
+  **Sardinians, Basques and Bedouins**. Combined with PC1 this spreads the modern populations into
+  the familiar arc, with Europe along one arm and the Near East along the other.
+
+Now the ancient groups:
+
+```{r ancient-means}
+ancient <- subset(dataWE, ModAnc != "Modern")
+
+round_num(aggregate(cbind(PC1, PC2) ~ ModAnc, data = ancient, FUN = mean), 4)
+table(ancient$ModAnc)
+```
+
+Before reading the group means off a table, put them on the plot.
+
+```{r ancient-overview, fig.width=10, fig.height=8}
+# A few modern populations to orient yourself by. Change these if you like.
+reference_pops <- c("Sardinian", "Basque", "Spanish", "French", "English", "Norwegian",
+                    "Finnish", "Estonian", "Lithuanian", "Russian", "Greek", "Turkish",
+                    "Abkhasian", "Druze", "BedouinA", "BedouinB")
+
+ancient_colours <- c("Hunter-gatherer" = "#1f77b4", "EHG" = "#17becf",
+                     "Early-farmer" = "#2ca02c", "Steppe" = "#d62728",
+                     "Samara_Eneolithic" = "#9467bd")
+
+ancient_means <- aggregate(cbind(PC1, PC2) ~ ModAnc, data = ancient, FUN = mean)
+reference <- pop_means[reference_pops, ]
+
+ggplot() +
+  # every modern individual, as a pale backdrop
+  geom_point(data = modern, aes(PC1, PC2), colour = "grey88", size = 1.2) +
+  # the ancient individuals, faintly
+  geom_point(data = ancient, aes(PC1, PC2, colour = ModAnc), size = 1.4, alpha = 0.35) +
+  # the modern populations you are orienting by
+  geom_label(data = reference, aes(PC1, PC2, label = POP),
+             size = 2.6, colour = "grey30", fill = "white", alpha = 0.7,
+             linewidth = 0, label.padding = unit(0.08, "lines")) +
+  # the ancient GROUP MEANS, which is what the question is about
+  geom_point(data = ancient_means, aes(PC1, PC2, fill = ModAnc),
+             shape = 23, size = 5, stroke = 0.9, colour = "black") +
+  geom_label(data = ancient_means, aes(PC1, PC2, label = ModAnc, colour = ModAnc),
+             size = 3.2, fontface = "bold", fill = "white", alpha = 0.9,
+             vjust = -0.9, show.legend = FALSE) +
+  scale_colour_manual(values = ancient_colours, guide = "none") +
+  scale_fill_manual(values = ancient_colours, guide = "none") +
+  labs(x = "PC1   (northeast Europe \u2190\u2192 Near East)",
+       y = "PC2   (Sardinia / Basque / Bedouin \u2190\u2192 Caucasus)",
+       title = "Where each ancient group sits (diamonds = group means)",
+       subtitle = "grey = modern individuals, pale colour = individual ancient samples")
+```
+
+### ❓ Question: What the ancient groups' positions mean
+
+Given that PC1 runs northeast-Europe (negative) to Near-East (positive), and looking at where each
+ancient group sits, work out the story. Think about it before revealing.
+
+1. `Hunter-gatherer` and `EHG` sit at the far **negative** end of PC1, beyond every modern
+   population. What does "beyond the modern range" tell you?
+2. `Early-farmer` sits near PC1 ≈ 0 with a clearly **negative PC2**, close to modern Sardinians.
+   Why Sardinians?
+3. `Steppe` sits **between** the hunter-gatherers and the early farmers. What is the standard
+   interpretation, and what is the caveat from Section 2?
+4. Modern northern Europeans sit between all three ancient groups rather than on top of any one of
+   them. What does that suggest?
+
+<details>
+<summary><b>✅ Reveal answer</b></summary>
+
+1. No present-day population is a direct, unmixed continuation of European Mesolithic
+   hunter-gatherers. Every modern European carries substantial later ancestry (farmer, steppe),
+   which pulls them away from the hunter-gatherer extreme. That ancestry has not disappeared — it is
+   diluted. (Part of the distance is also projection shrinkage and the low coverage of these few
+   samples, so don't over-read the exact position of a 3-individual group.)
+2. Sardinians are the modern population with the **highest proportion of early-farmer ancestry**,
+   because Sardinia received comparatively little of the later steppe-related gene flow that
+   reshaped mainland Europe. They are often described as the closest modern proxy for Neolithic
+   European farmers — which is why early farmers project right next to them.
+3. The standard interpretation is that Bronze Age steppe populations were themselves a mixture, with
+   roughly half their ancestry from eastern hunter-gatherers and much of the rest from Caucasus and
+   Near-Eastern-related sources — and that their expansion into Europe after ~3000 BCE brought that
+   ancestry west. The caveat: *this plot alone* does not establish any of it. An intermediate
+   position is consistent with admixture but also with shared drift or with projection shrinkage.
+   The admixture conclusion comes from f-statistics and qpAdm in the original papers, not from the
+   scatter plot.
+4. That modern northern Europeans are **mixtures of all three** ancient sources — hunter-gatherer,
+   early farmer and steppe — in varying proportions. This is the central result of the 2015 ancient
+   DNA papers: present-day Europeans are not the descendants of one ancient population but of
+   several successive waves. Again: the plot makes it visible and plausible; the formal methods make
+   it a finding.
+
+</details>
+
+## 4.4 The full map of modern populations
+
+The plot above named sixteen populations to orient you. Here is the same space with **every**
+modern population labelled at its mean, and the ancient groups left off so that nothing is hidden
+behind them. Read it as a map: the arc really does run from the Baltic, round through central and
+southern Europe, to the Levant and the Arabian peninsula. Keep it to hand — Sections 6 and 7 ask
+you to interpret small groups of these populations. (Nothing to do here.)
+
+```{r labelled-overview, fig.width=11, fig.height=9}
+ggplot() +
+  geom_point(data = modern, aes(PC1, PC2), colour = "grey85", size = 1.1) +
+  # check_overlap drops labels that would collide, which keeps the crowded
+  # northern-European corner readable
+  geom_text(data = pop_means, aes(PC1, PC2, label = POP),
+            size = 2.1, colour = "grey35", check_overlap = TRUE) +
+  labs(x = "PC1   (northeast Europe \u2190\u2192 Near East)",
+       y = "PC2   (Sardinia / Basque / Bedouin \u2190\u2192 Caucasus)",
+       title = "A map of modern West Eurasian variation",
+       subtitle = "every modern individual in grey, each population labelled at its mean")
+```
+
+---
+
+# 5. Warning
+
+A PCA result normally comes with the **variance explained** by each PC: "PC1 explains 4.2% of the
+variance, PC2 1.1%", and so on. That number is how you judge whether a PC is worth looking at, and
+it is why PC1 is usually the widest axis on the plot and later PCs are visibly narrower.
+
+**Your data file does not contain those numbers.** `smartPCA` writes the eigenvalues to a separate
+output file, and you were only given the coordinates. So you cannot report variance explained for
+these PCs — if a question asks you to, say that the eigenvalues weren't provided.
+
+Worse, you cannot sneak up on the answer by looking at how wide each axis is. Here is why.
+
+```{r normalisation}
+# For each PC: the sum of squared scores, over the modern individuals only
+cat("sum of squared scores, modern individuals:\n")
+print(round(colSums(modern[, PCS]^2), 4))
+
+cat("\nstandard deviation, modern individuals:\n")
+print(round(apply(modern[, PCS], 2, sd), 4))
+
+cat("\n1 / sqrt(n - 1) with n =", nrow(modern), ":",
+    round(1 / sqrt(nrow(modern) - 1), 4), "\n")
+```
+
+Every PC has sum of squares **exactly 1**, and therefore exactly the same standard deviation,
+0.0359, which is precisely $1/\sqrt{n-1}$ for the 777 modern individuals.
+
+`smartPCA` **normalised every principal component to unit length.** The eigenvalue — the thing that
+says how important a PC is — has been divided out of the coordinates and stored elsewhere. So:
+
+> **In this dataset, PC10 occupies exactly as much width on the page as PC1.**
+> The spread of the cloud carries **no** information about how much variance a PC explains.
+
+
+A couple of smaller consequences worth knowing:
+
+* The spread of **all 997** individuals is slightly wider than 0.0359 on PC1–PC4. That is the
+  projected ancient individuals, who were not part of the normalisation. On PC5–PC10 it is back to
+  0.0318 — the ancients barely budge from the origin on those axes, which is itself a hint about how
+  much population signal is left in them.
+* The East Eurasian file in Section 9 was **not** normalised the same way (its sums of squares are
+  not 1 and differ between PCs), so don't assume the two files are on a common scale. They are
+  separate analyses with separate axes; a `PC1` in one has nothing to do with a `PC1` in the other.
+
+```{r normalisation-all}
+cat("all 997 individuals, sd per PC:\n")
+print(round(apply(dataWE[, PCS], 2, sd), 4))
+```
+
+---
+
+# 6. Zooming in on a few populations
+
+## 6.1 📝 Hand-in question 2: the North Atlantic and the Baltic
+
+Subset `dataWE` to the **English, Norwegian, Finnish and Icelandic** populations and plot PC1 vs
+PC2, with one colour per population.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+* `subset(df, POP %in% nordic_pops)` keeps the rows whose `POP` is one of a vector of values.
+* Then `plot_pcs(nordic, colour = "POP", title = "...")`.
+
+</details>
+
+```{r solved-q2}
+nordic_pops <- c("English", "Norwegian", "Finnish", "Icelandic")
+
+nordic <- subset(dataWE, POP %in% nordic_pops)
+
+print(table(nordic$POP))
+plot_pcs(nordic, x = "PC1", y = "PC2", colour = "POP",
+         title = "PC1 vs PC2: English, Norwegian, Finnish, Icelandic")
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+nordic_pops <- c("English", "Norwegian", "Finnish", "Icelandic")
+
+nordic <- subset(dataWE, POP %in% nordic_pops)
+
+print(table(nordic$POP))
+plot_pcs(nordic, x = "PC1", y = "PC2", colour = "POP",
+         title = "PC1 vs PC2: English, Norwegian, Finnish, Icelandic")
+```
+
+</details>
+
+```{r nordic-numbers}
+cat("population means:\n")
+print(round_num(aggregate(cbind(PC1, PC2, PC3, PC4) ~ POP, data = nordic, FUN = mean), 4))
+
+cat("\nstandard deviation within each population:\n")
+print(round_num(aggregate(cbind(PC1, PC2, PC3, PC4) ~ POP, data = nordic, FUN = sd), 4))
+```
+
+### ❓ Question: Interpret the four populations on PC1 and PC2
+
+Which populations overlap, which separate, is that what geography would predict,
+and how much should you trust it given the spread within each population?
+
+## 6.2 📝 Hand-in question 3: four populations of your choice
+
+Now pick your own four and do the same. Some suggestions, each of which shows something:
+
+* `c("Sardinian", "Italian_North", "Italian_South", "Greek")` — a cline up the Italian peninsula,
+  and Sardinia's isolation.
+* `c("Basque", "Spanish", "Spanish_North", "French")` — a population isolate next to its neighbours.
+* `c("Druze", "Palestinian", "Lebanese", "Syrian")` — Levantine populations, one of which is an
+  endogamous religious community.
+* `c("Jew_Ashkenazi", "Jew_Moroccan", "Jew_Yemenite", "Jew_Turkish")` — one diaspora, several host
+  regions. Do they cluster with each other or with where they lived?
+* `c("Finnish", "Russian", "Estonian", "Lithuanian")` — the northeastern end of PC1 in detail.
+* Or mix moderns and ancients: `c("Sardinian", "Anatolia_Neolithic", "LBK_EN", "WHG")`.
+
+Print the full list of populations first, pick four, plot them, and write down what you see.
+
+```{r list-pops}
+sort(unique(dataWE$POP))
+```
+
+```{r solved-q3}
+my_pops <- c("Sardinian", "Italian_North", "Italian_South", "Greek")
+
+my_subset <- subset(dataWE, POP %in% my_pops)
+print(plot_pcs(my_subset, x = "PC1", y = "PC2", colour = "POP",
+               title = paste("PC1 vs PC2:", paste(my_pops, collapse = ", "))))
+
+print(round_num(aggregate(cbind(PC1, PC2) ~ POP, data = my_subset, FUN = mean), 4))
+print(round_num(aggregate(cbind(PC1, PC2) ~ POP, data = my_subset, FUN = sd), 4))
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+my_pops <- c("Sardinian", "Italian_North", "Italian_South", "Greek")
+
+my_subset <- subset(dataWE, POP %in% my_pops)
+print(plot_pcs(my_subset, x = "PC1", y = "PC2", colour = "POP",
+               title = paste("PC1 vs PC2:", paste(my_pops, collapse = ", "))))
+
+print(round_num(aggregate(cbind(PC1, PC2) ~ POP, data = my_subset, FUN = mean), 4))
+print(round_num(aggregate(cbind(PC1, PC2) ~ POP, data = my_subset, FUN = sd), 4))
+```
+
+**What this particular choice shows.** The four form an ordered gradient along PC1 and PC2 that
+matches the map: Italian_North, then Italian_South, then Greek, running towards the eastern
+Mediterranean — with Sardinian sitting well off the line at the extreme negative-PC2 end.
+
+Two different processes:
+
+* **The Italy–Greece gradient is isolation by distance plus gene flow.** Neighbouring populations
+  exchange migrants, so allele frequencies change gradually with distance instead of in jumps. A
+  smooth cline in a PCA plot is the signature of this. Note that a cline means you cannot really
+  speak of discrete "populations" here at all — the labels are administrative, the variation is
+  continuous.
+* **Sardinia's position is isolation plus drift, and retained early-farmer ancestry.** An island
+  population with limited immigration keeps more of its Neolithic ancestry and drifts on its own
+  trajectory. That is also why early farmers project next to Sardinians in Section 4.
+
+</details>
+
+---
+
+# 7. Higher principal components
+
+## 7.1 📝 Hand-in question 4: PC3 vs PC4 of your four Nordic populations
+
+Plot PC3 against PC4 for the English/Norwegian/Finnish/Icelandic subset. Compare with the PC1–PC2
+plot: has the relationship between the populations changed?
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+Use the `plot_pc_pairs` helper to get both panels in one plot:
+
+```r
+plot_pc_pairs(nordic, list(c("PC1", "PC2"), c("PC3", "PC4")), free_scales = TRUE)
+```
+
+(`free_scales = TRUE` lets each panel zoom to its own data, which is what you want here because
+you are comparing *shapes*. In Section 7.2 you will want `FALSE` instead.)
+
+</details>
+
+```{r solved-q4, fig.width=10, fig.height=4.6}
+plot_pc_pairs(nordic, list(c("PC1", "PC2"), c("PC3", "PC4")),
+              free_scales = TRUE,
+              title = "The same 40 individuals on two different pairs of axes")
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+plot_pc_pairs(nordic, list(c("PC1", "PC2"), c("PC3", "PC4")),
+              free_scales = TRUE,
+              title = "The same 40 individuals on two different pairs of axes")
+```
+
+</details>
+
+The plot shows the populations sitting further apart on some axes than others. These are the
+numbers behind that: the population means on PC1–PC4, and **Cohen's *d*** for the comparisons that
+matter — the distance between two group means in units of their pooled standard deviation.
+Roughly, *d* = 1 means the means are one standard deviation apart, and by *d* ≈ 3 the two groups
+barely overlap.
+
+```{r cohens-d}
+cohens_d <- function(a, b, pc) {
+  n_a <- nrow(a)
+  n_b <- nrow(b)
+  pooled_sd <- sqrt(((n_a - 1) * var(a[[pc]]) + (n_b - 1) * var(b[[pc]])) / (n_a + n_b - 2))
+  (mean(a[[pc]]) - mean(b[[pc]])) / pooled_sd
+}
+
+# Do the two groups' ranges overlap at all on this axis?
+ranges_overlap <- function(a, b, pc) {
+  max(min(a[[pc]]), min(b[[pc]])) <= min(max(a[[pc]]), max(b[[pc]]))
+}
+
+pcs4 <- c("PC1", "PC2", "PC3", "PC4")
+
+finnish     <- subset(nordic, POP == "Finnish")
+other_three <- subset(nordic, POP != "Finnish")
+english     <- subset(nordic, POP == "English")
+nor_ice     <- subset(nordic, POP %in% c("Norwegian", "Icelandic"))
+norwegian   <- subset(nordic, POP == "Norwegian")
+icelandic   <- subset(nordic, POP == "Icelandic")
+
+cat("population means:\n")
+print(round_num(aggregate(cbind(PC1, PC2, PC3, PC4) ~ POP, data = nordic, FUN = mean), 4),
+      row.names = FALSE)
+
+separation_pairs <- data.frame(
+  PC                = pcs4,
+  finn_d            = sapply(pcs4, function(pc) cohens_d(finnish, other_three, pc)),
+  finn_overlap      = sapply(pcs4, function(pc) ranges_overlap(finnish, other_three, pc)),
+  english_d         = sapply(pcs4, function(pc) cohens_d(english, nor_ice, pc)),
+  norway_vs_iceland = sapply(pcs4, function(pc) cohens_d(norwegian, icelandic, pc))
+)
+
+cat("\nseparation on each axis (Cohen's d):\n")
+print(round_num(separation_pairs, 2), row.names = FALSE)
+```
+
+### ❓ Question: Has the relationship changed?
+
+## 7.2 📝 Hand-in question 5: PC5 to PC10
+
+Plot some combinations of PC5–PC10 for the same four populations. What happens to the separation
+between populations, and why?
+
+Rather than plotting one pair at a time, plot all five consecutive pairs at once.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+```r
+pairs <- list(c("PC5", "PC6"), c("PC6", "PC7"), ...)
+plot_pc_pairs(nordic, pairs, free_scales = FALSE)
+```
+
+Use `free_scales = FALSE` here: every panel then gets the **same** axis limits, so you can compare
+them honestly. With free scales each panel auto-zooms to its own data and they all look equally
+spread out.
+
+</details>
+
+```{r solved-q5, fig.width=12, fig.height=3.4}
+pairs <- list(c("PC5", "PC6"), c("PC6", "PC7"), c("PC7", "PC8"),
+              c("PC8", "PC9"), c("PC9", "PC10"))
+
+plot_pc_pairs(nordic, pairs, free_scales = FALSE,
+              title = "PC5-PC10, all panels on the same scale")
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+pairs <- list(c("PC5", "PC6"), c("PC6", "PC7"), c("PC7", "PC8"),
+              c("PC8", "PC9"), c("PC9", "PC10"))
+
+plot_pc_pairs(nordic, pairs, free_scales = FALSE,
+              title = "PC5-PC10, all panels on the same scale")
+```
+
+Compare these with the PC1–PC2 and PC3–PC4 plots **on the same axis limits** and the four
+populations have become a single undifferentiated blob centred on zero.
+
+</details>
+
+## 7.3 Quantifying "separation"
+
+The natural measure: of all the variation along a given PC, **what share lies between populations
+rather than within them?** If populations are cleanly separated, most of the spread is between group
+means. If the labels are meaningless on that axis, almost all the spread is within groups.
+
+That quantity is called $\eta^2$ (eta squared), and it is a close relative of $F_{ST}$ — which you
+have met as the share of genetic variation that lies between populations rather than within them.
+Same idea, applied to one PC instead of to allele frequencies.
+
+$$\eta^2 = \frac{\sum_g n_g (\bar{x}_g - \bar{x})^2}{\sum_i (x_i - \bar{x})^2}
+= \frac{\text{variation between population means}}{\text{total variation}}$$
+
+It runs from 0 (the population labels tell you nothing about where an individual falls on this axis)
+to 1 (knowing the population tells you the position exactly).
+
+```{r eta-squared}
+eta_squared <- function(df, value, group) {
+  x <- df[[value]]
+  g <- df[[group]]
+  grand_mean <- mean(x)
+  ss_total <- sum((x - grand_mean)^2)
+  ss_between <- sum(tapply(x, g, function(v) length(v) * (mean(v) - grand_mean)^2))
+  ss_between / ss_total
+}
+
+# how well does each PC separate the four Nordic populations?
+# a formal test alongside it: does any population mean differ on this PC?
+separation <- data.frame(
+  PC = factor(PCS, levels = PCS),
+  eta_squared = vapply(PCS, function(pc) eta_squared(nordic, pc, "POP"), numeric(1)),
+  p_value = vapply(PCS, function(pc) {
+    anova(aov(nordic[[pc]] ~ nordic$POP))[["Pr(>F)"]][1]
+  }, numeric(1))
+)
+
+print(round(data.frame(separation[, -1], row.names = PCS), 4))
+```
+
+```{r eta-squared-plot, fig.width=8, fig.height=4}
+ggplot(separation, aes(PC, eta_squared, fill = p_value < 0.01)) +
+  geom_col() +
+  scale_fill_manual(values = c("TRUE" = "#2ca02c", "FALSE" = "grey65"),
+                    labels = c("TRUE" = "p < 0.01", "FALSE" = "not significant"),
+                    name = NULL) +
+  ylim(0, 1) +
+  labs(y = expression(eta^2 * ": share of variation between populations"), x = NULL,
+       title = "How well does each PC separate English / Norwegian / Finnish / Icelandic?")
+```
+
+### ❓ Question: Explain the pattern in that bar plot
+
+What does $\eta^2$ do across PC1 → PC10, and *why*?
+
+```{r later-axes}
+for (pc in c("PC5", "PC6", "PC7", "PC8", "PC9", "PC10")) {
+  ordered <- pop_means[order(pop_means[[pc]]), "POP"]
+  cat(sprintf("%5s:  %s   <-->   %s\n", pc,
+              paste(head(ordered, 3), collapse = ", "),
+              paste(tail(ordered, 3), collapse = ", ")))
+}
+```
+
+---
+
+# 8. Geography against genetics
+
+## 8.1 📝 Hand-in question 6: do the ancient samples' coordinates predict their PCs?
+
+`dataWE_LatLong.txt` gives the latitude and longitude of the site each **ancient** individual was
+excavated from. If the principal components track ancestry, and ancestry varies across space, the
+coordinates should correlate with the PCs.
+
+Load it and merge it onto `dataWE` by the `IND` column.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+* `read.table(file.path(data_dir, "dataWE_LatLong.txt"), sep = "\t", header = TRUE)`
+* `merge(dataWE, latlong, by = "IND")` keeps only the rows present in **both** tables (an inner
+  join, the default) — which is what you want, since only ancient individuals have coordinates.
+
+</details>
+
+```{r solved-q6}
+latlong <- read.table(file.path(data_dir, "dataWE_LatLong.txt"), sep = "\t", header = TRUE)
+geo <- merge(dataWE, latlong, by = "IND")
+
+cat("rows after merging:", nrow(geo), "\n")
+cat("ancient individuals in dataWE:", sum(dataWE$ModAnc != "Modern"), "\n")
+head(geo)
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+latlong <- read.table(file.path(data_dir, "dataWE_LatLong.txt"), sep = "\t", header = TRUE)
+geo <- merge(dataWE, latlong, by = "IND")
+
+cat("rows after merging:", nrow(geo), "\n")
+cat("ancient individuals in dataWE:", sum(dataWE$ModAnc != "Modern"), "\n")
+head(geo)
+```
+
+</details>
+
+**First observation, before any statistics:** the merge gives **191** rows but there are **220**
+ancient individuals. 29 ancient individuals have no coordinates, so they drop out silently. This is
+normal for ancient DNA — provenance information is not always published — but you should say so when
+you report the result, because an inner join quietly changing your sample size is one of the most
+common ways to mislead yourself.
+
+```{r missing-coords}
+missing_coords <- subset(dataWE, ModAnc != "Modern" & !(IND %in% latlong$IND))
+
+cat(nrow(missing_coords), "ancient individuals without coordinates, from these populations:\n")
+sort(table(missing_coords$POP), decreasing = TRUE)
+```
+
+## 8.2 Plotting before testing
+
+**Plot the coordinates first.** They
+are latitudes and longitudes, so you already know what they should look like: a rough map of West
+Eurasia.
+
+```{r coord-map, fig.width=8.5, fig.height=6}
+ggplot(geo, aes(Longitude, Latitude)) +
+  geom_point(colour = "#d62728", size = 2, alpha = 0.7) +
+  coord_fixed() +
+  labs(title = "Where the ancient samples come from")
+
+cat("Latitude: ", min(geo$Latitude), "to", max(geo$Latitude), "\n")
+cat("Longitude:", min(geo$Longitude), "to", max(geo$Longitude), "\n")
+```
+
+### ❓ Question: What is wrong with that map?
+
+Look at the range of the latitudes, and at the stray points.
+
+<details>
+<summary><b>✅ Reveal answer</b></summary>
+
+Latitude runs from **10.81** to **85.45**. Both ends are impossible for this dataset:
+
+* Latitude 10.81° N is in **Somalia / the Gulf of Aden**.
+* Latitude 85.45° N is in the **Arctic Ocean**, several hundred km from the nearest land.
+
+West Eurasian archaeological sites of the Neolithic and Bronze Age should fall roughly between 35°
+and 62° N. Something is wrong with some of the rows, and plotting it took five seconds.
+
+</details>
+
+### 📝 TODO: Find the bad rows and work out what happened to them
+
+Pull out the rows whose latitude is outside a plausible range for this dataset — say below 30 or
+above 70 — and look at them together with their population labels.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+* Combine conditions with `|` (or) and `&` (and): `subset(df, a < 1 | a > 9)`
+* Show the columns that will help you diagnose it: `IND`, `POP`, `Latitude`, `Longitude`.
+* Then ask yourself: if a `Northern_LNBA` (northern European Late Neolithic/Bronze Age) individual is
+  recorded at latitude 13.6, longitude 55.4 — what is at latitude 55.4, longitude 13.6?
+
+</details>
+
+```{r solved-suspect}
+suspect <- subset(geo, Latitude < 30 | Latitude > 70)
+
+suspect[, c("IND", "POP", "ModAnc", "Latitude", "Longitude")]
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+suspect <- subset(geo, Latitude < 30 | Latitude > 70)
+
+suspect[, c("IND", "POP", "ModAnc", "Latitude", "Longitude")]
+```
+
+**Eight rows, at seven distinct sites, all with IDs starting `RISE`** (the Bronze Age samples from
+Allentoft et al. 2015). And in every one of them, **latitude and longitude have been swapped.**
+Swap them back and each lands exactly where its archaeological label says it should:
+
+| Individual | `POP` | As recorded | Swapped back | Where that is |
+|---|---|---|---|---|
+| RISE175, RISE179 | Northern_LNBA | 13.60, 55.40 | 55.40 N, 13.60 E | Scania, southern Sweden ✓ |
+| RISE210 | Northern_LNBA | 14.10, 56.00 | 56.00 N, 14.10 E | southern Sweden ✓ |
+| RISE109, RISE150, RISE154 | Central_LNBA | ~17.0, ~51.0 | ~51.0 N, ~17.0 E | Silesia, Poland ✓ |
+| RISE471 | Central_LNBA_outlier | 10.81, 48.17 | 48.17 N, 10.81 E | Bavaria, Germany ✓ |
+| RISE512 | Andronovo_outlier | 85.45, 53.46 | 53.46 N, 85.45 E | Altai, Russia ✓ |
+
+As recorded, they sit in the Gulf of Aden, the Arabian Sea and the Arctic Ocean. Swapped, they sit
+in exactly the right archaeological regions. This is a real error in the data file you were given,
+not something about ancient DNA.
+
+</details>
+
+### 📝 TODO: Fix them, then do the correlation
+
+Make a corrected copy of `geo` with those eight rows' latitude and longitude exchanged, then compute
+the correlation of `Latitude` and `Longitude` with `PC1` and `PC2` — before and after the fix, so
+you can see what the error was doing to your conclusion.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+```r
+geo_fixed <- geo
+bad <- geo$Latitude < 30 | geo$Latitude > 70
+geo_fixed[bad, c("Latitude", "Longitude")] <- geo[bad, c("Longitude", "Latitude")]
+```
+
+`cor.test(x, y)` returns an object; `$estimate` is the coefficient *r* and `$p.value` the p-value.
+To build the comparison table, loop over the two data frames, the two PCs and the two coordinates.
+
+</details>
+
+```{r solved-fix}
+geo_fixed <- geo
+bad <- geo$Latitude < 30 | geo$Latitude > 70
+geo_fixed[bad, c("Latitude", "Longitude")] <- geo[bad, c("Longitude", "Latitude")]
+
+correlations <- do.call(rbind, lapply(c("raw", "fixed"), function(label) {
+  table_in_use <- if (label == "raw") geo else geo_fixed
+  do.call(rbind, lapply(c("PC1", "PC2"), function(pc) {
+    do.call(rbind, lapply(c("Latitude", "Longitude"), function(coord) {
+      test <- cor.test(table_in_use[[pc]], table_in_use[[coord]])
+      data.frame(data = label, PC = pc, coordinate = coord,
+                 r = round(unname(test$estimate), 3),
+                 p = signif(test$p.value, 3))
+    }))
+  }))
+}))
+
+print(correlations, row.names = FALSE)
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+geo_fixed <- geo
+bad <- geo$Latitude < 30 | geo$Latitude > 70
+geo_fixed[bad, c("Latitude", "Longitude")] <- geo[bad, c("Longitude", "Latitude")]
+
+correlations <- do.call(rbind, lapply(c("raw", "fixed"), function(label) {
+  table_in_use <- if (label == "raw") geo else geo_fixed
+  do.call(rbind, lapply(c("PC1", "PC2"), function(pc) {
+    do.call(rbind, lapply(c("Latitude", "Longitude"), function(coord) {
+      test <- cor.test(table_in_use[[pc]], table_in_use[[coord]])
+      data.frame(data = label, PC = pc, coordinate = coord,
+                 r = round(unname(test$estimate), 3),
+                 p = signif(test$p.value, 3))
+    }))
+  }))
+}))
+
+print(correlations, row.names = FALSE)
+```
+
+</details>
+
+### ❓ Question: Report and interpret the correlations
+
+## 8.3 Pseudo-replication: how many independent points do you really have?
+
+
+```{r pseudoreplication}
+cat("individuals:", nrow(geo_fixed), "\n")
+cat("distinct sampling locations:",
+    nrow(unique(geo_fixed[, c("Latitude", "Longitude")])), "\n")
+```
+
+191 individuals, but only **89 distinct coordinate pairs**. Several individuals share a site exactly
+— they were excavated together, often from the same burial, and are frequently from the same culture
+and sometimes literally related. A correlation test assumes its data points are **independent**;
+these are not. The *n* that goes into the p-value is inflated, so the p-values above are too small.
+
+A quick robustness check: collapse to one point per site (averaging the PCs of the individuals found
+there) and redo the correlation with n = 89.
+
+```{r site-level}
+by_site <- aggregate(cbind(PC1, PC2) ~ Latitude + Longitude, data = geo_fixed, FUN = mean)
+
+comparison <- do.call(rbind, lapply(c("PC1", "PC2"), function(pc) {
+  do.call(rbind, lapply(c("Latitude", "Longitude"), function(coord) {
+    ind <- cor.test(geo_fixed[[pc]], geo_fixed[[coord]])
+    site <- cor.test(by_site[[pc]], by_site[[coord]])
+    data.frame(PC = pc, coordinate = coord,
+               r_individuals = round(unname(ind$estimate), 3),
+               p_individuals = signif(ind$p.value, 3),
+               r_sites = round(unname(site$estimate), 3),
+               p_sites = signif(site$p.value, 3))
+  }))
+}))
+
+cat("n individuals =", nrow(geo_fixed), " n sites =", nrow(by_site), "\n\n")
+print(comparison, row.names = FALSE)
+```
+
+### ❓ Question: Which conclusions survive?
+
+---
+
+# 9. The East Eurasian dataset
+
+This is a **separate PCA** with its own axes, computed from modern individuals from Russia and
+Siberia, with four ancient groups projected on. `PC1` here has nothing to do with `PC1` in
+`dataWE.txt`.
+
+## 9.1 📝 Hand-in question 7: PC1 vs PC2, coloured by `POP`
+
+Load `dataEE.txt` and plot the first two PCs, one colour per `POP`. Look at the populations and
+their sizes before you interpret anything.
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+Same as `dataWE.txt`: `read.table(file.path(data_dir, "dataEE.txt"), sep = "\t", header = TRUE)`,
+then `plot_pcs(..., colour = "POP")`.
+
+</details>
+
+```{r solved-q7, fig.width=8.5, fig.height=6}
+dataEE <- read.table(file.path(data_dir, "dataEE.txt"), sep = "\t", header = TRUE)
+
+cat("rows, columns:", dim(dataEE), "\n")
+print(table(dataEE$ModAnc, dataEE$POP))
+
+plot_pcs(dataEE, x = "PC1", y = "PC2", colour = "POP",
+         title = "East Eurasian PCA: PC1 vs PC2")
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+dataEE <- read.table(file.path(data_dir, "dataEE.txt"), sep = "\t", header = TRUE)
+
+cat("rows, columns:", dim(dataEE), "\n")
+print(table(dataEE$ModAnc, dataEE$POP))
+
+plot_pcs(dataEE, x = "PC1", y = "PC2", colour = "POP",
+         title = "East Eurasian PCA: PC1 vs PC2")
+```
+
+</details>
+
+## 9.2 Note
+
+**The populations are very unequal, and one label is doing a lot of work.** `Siberians` is 225 of the
+296 individuals — one label covering many distinct peoples across a landmass the size of Europe
+(Yakuts, Evenks, Tuvinians, Nganasans, Selkups and more, in the original data). That is why its
+cloud is so much more spread out than any other group's: it is not one population.
+
+```{r ee-numbers}
+cat("means:\n")
+print(round_num(aggregate(cbind(PC1, PC2, PC3) ~ POP, data = dataEE, FUN = mean), 4))
+
+cat("\nstandard deviations:\n")
+print(round_num(aggregate(cbind(PC1, PC2, PC3) ~ POP, data = dataEE, FUN = sd), 4))
+```
+
+One of the four projected groups is misleadingly named. The four ancient groups are
+`Russia_Bering`, `USA_Aleut`, `USA_Kuskokwim` and `Russia_Baikal`. The first three are Arctic or
+sub-Arctic maritime populations — the Bering Strait coast, the Aleutian Islands and southwestern
+Alaska respectively. `Russia_Baikal` is not: Lake Baikal is in continental southern Siberia, far
+from the Arctic coast, and these are ancient inland Siberians.
+
+The data agree. In PC1–PC3 space `Russia_Baikal` sits 0.026 from the `Siberians` centroid but
+0.071–0.096 from each of the three Arctic groups, and all ten of its individuals fall inside the
+central 95% of the Siberian cloud on all three axes. Expect it not to behave like the other three
+in the plots below.
+
+### ❓ Question: Interpret PC1 and PC2
+
+Which populations cluster, which separate, is it what geography predicts?
+
+## 9.3 📝 Hand-in question 8: PC3 vs PC4
+
+Plot PC3 against PC4 for `dataEE` and compare with PC1–PC2. How has the relationship between
+populations changed?
+
+<details>
+<summary><b>💡 Hint (click to open)</b></summary>
+
+`plot_pc_pairs` again, as in Section 7.1.
+
+</details>
+
+```{r solved-q8, fig.width=10, fig.height=4.6}
+print(plot_pc_pairs(dataEE, list(c("PC1", "PC2"), c("PC3", "PC4")),
+                    free_scales = TRUE,
+                    title = "East Eurasian data on two different pairs of axes"))
+
+print(round_num(aggregate(cbind(PC3, PC4) ~ POP, data = dataEE, FUN = mean), 4))
+```
+
+<details>
+<summary><b>✅ Reveal solution</b></summary>
+
+```r
+print(plot_pc_pairs(dataEE, list(c("PC1", "PC2"), c("PC3", "PC4")),
+                    free_scales = TRUE,
+                    title = "East Eurasian data on two different pairs of axes"))
+
+print(round_num(aggregate(cbind(PC3, PC4) ~ POP, data = dataEE, FUN = mean), 4))
+```
+
+</details>
+
+Let's run the same $\eta^2$ scan as in Section 7, since we now have the tool.
+
+```{r ee-eta, fig.width=8, fig.height=4}
+separation_ee <- data.frame(
+  PC = factor(PCS, levels = PCS),
+  eta_squared = vapply(PCS, function(pc) eta_squared(dataEE, pc, "POP"), numeric(1)),
+  p_value = vapply(PCS, function(pc) {
+    anova(aov(dataEE[[pc]] ~ dataEE$POP))[["Pr(>F)"]][1]
+  }, numeric(1))
+)
+
+print(round(data.frame(separation_ee[, -1], row.names = PCS), 4))
+
+ggplot(separation_ee, aes(PC, eta_squared, fill = p_value < 0.01)) +
+  geom_col() +
+  scale_fill_manual(values = c("TRUE" = "#2ca02c", "FALSE" = "grey65"),
+                    labels = c("TRUE" = "p < 0.01", "FALSE" = "not significant"),
+                    name = NULL) +
+  ylim(0, 1) +
+  labs(y = expression(eta^2), x = NULL,
+       title = "East Eurasian data: how well does each PC separate the 6 populations?")
+```
+
+### ❓ Question: How has the relationship changed on PC3 and PC4?
+
+---
+
+# 10. The general questions
+
+## 📝 Hand-in question 9: which aDNA artefacts make ancient samples unsuitable for computing PCs?
+
+Section 2.2 has the material. In your own words: list the artefacts, then say why that *kind* of
+error is specifically a problem for a PCA.
+
+## 📝 Hand-in question 10: what else can you analyse with PCA?
+
+PCA is not a genetics method. Where else could it be used, in biology and outside it?
+
+---
+
+```{r session-info}
+sessionInfo()
+```

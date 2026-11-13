@@ -1,49 +1,127 @@
-# Wednesday Week47
+# Friday Week 47
 
-## Work plan
-For this week's exercise, we will recreate the PCA results of the paper we discussed on Wednesday, and start working on a new dataset. The questions at the end of the document are your 3rd hand-in exercise to be hand in in brightspace by some Sunday.
+## PCA of ancient and modern Eurasians
 
-## Background (adapted from [link](https://github.com/stschiff/compvar-workshop-docs/tree/master/contents/02_pca))
+Today we **read** a PCA instead of running one. You get the output of a principal components
+analysis of ~1,000 West Eurasian and ~300 East Eurasian individuals, part of it ancient DNA, and
+work out what it says about European and Siberian population history.
 
-### Principal Components Analysis (PCA)
-Principal components analysis (PCA) is one of the most useful techniques to visualise genetic diversity in a dataset. The methodology is not restricted to genetic data, but in general allows breaking down high-dimensional datasets to two or more dimensions for visualisation in a two-dimensional space.
+The West Eurasian analysis recreates the PCA in
+[Mathieson et al. (2015), *Nature* 528:499–503](https://doi.org/10.1038/nature16152),
+*Genome-wide patterns of selection in 230 ancient Eurasians* (you don't have to read the paper).
 
-To understand how PCA works, consider a single individual and its representation by its genomic markers. Formally, each individual is a point in an n-dimensional space, where each dimension is a marker with its corresponding genotype, or missing data. To visualise this high-dimensional dataset, we would like to project it down to two dimensions. But as there are many ways to project the shadow of a three-dimensional object on a two dimensional plane, there are many more ways to project an n-dimensional cloud of points to two dimensions. What PCA does is figuring out the "best" way to do this projection in order to visualise the major components of variance in the data.
+> **Not Wednesday's paper.** Wednesday's discussion was Bergeron et al. (2023) on germline mutation
+> rates, which has nothing to do with this exercise. An earlier version of this page said the two
+> were connected — they aren't.
 
-### Eigensoft package ([link](https://github.com/DReichLab/EIG))
-For actually running the analysis, we use a software called `smartPCA` from the Eigensoft package. As many other tools from this and related packages, smartPCA reads in a parameter file which specifies its input and output files and options. There are four files required as input to the program. The `.snp` file contains the SNP positions. It consists of six columns: SNP-name, chromosome, genetic positions, physical position, reference allele, alternative allele. The `.ind` file contains the names of the individuals. It consists of three columns: Individual Name, Sex (encoded as M(ale), F(emale), or U(nknown)), and population name. The `.geno` file contains the genotype matrix, with individuals laid out from left to right, and SNP positions laid out from top to bottom. The last input file is a list of populations that you want to use to calculate the output files.
+Along the way you will:
 
-### Population lists vs. Projection
-The list of populations is very crucial for inference. It specifies the populations whose individuals are used to calculate the principal components. Why not just use all populations? For two reasons: First, there are simply too many of them. We don't want to use all of them, since the computation would take too long. More importantly, however, we also try to avoid using ancient samples to compute principal components, to avoid specific ancient DNA-related artefacts affecting the computation.
+- see what `smartPCA` was actually given, and why ancient samples are **projected** onto modern
+  variation instead of helping to compute the axes;
+- read a PCA plot properly — including why **in this dataset you cannot judge a PC's importance
+  from how wide the cloud looks**;
+- connect the clusters to real processes: drift, founder effects, gene flow, isolation by distance,
+  admixture;
+- measure how well each PC separates your populations, instead of guessing;
+- find the data errors in the files you were given. There are several, and plotting finds them.
 
-So what happens to individuals that are not in populations listed in the population list? Well, fortunately, they are not just ignored, but "projected". This means that after the principal components have been computed, all individuals (not just the ones belonging to the populations in the initial list) are projected onto these principal components. That way, we can visualise ancient populations in the context of modern genetic variation. While that may sound a bit problematic at first (surely there must be variation in ancient populations that is not represented well by modern populations), it turns out to be nevertheless one of the most useful tools for this purpose. The advantage of avoiding ancient DNA artefacts and batch effects to affect the visualisation outweighs the disadvantage of missing some private genetic variation components in the ancient populations themselves. Of course, that argument breaks down once the analysed populations become too ancient and detached from modern genetic variation. 
+## The tutorial
+
+Same content in both languages — pick whichever you prefer.
+
+| | With the exercises to fill in | Fully worked |
+|---|---|---|
+| **R** (ggplot2) | [`exercise/pca_eurasia.Rmd`](exercise/pca_eurasia.Rmd) | [`exercise/pca_eurasia_solved.Rmd`](exercise/pca_eurasia_solved.Rmd) |
+| **Python** (pandas) | [`exercise/pca_eurasia.ipynb`](exercise/pca_eurasia.ipynb) | [`exercise/pca_eurasia_solved.ipynb`](exercise/pca_eurasia_solved.ipynb) |
+
+The exercise versions contain 📝 **TODO** blocks where you write a few lines yourself, with
+💡 **hints** for the syntax, check cells that tell you whether you got it right, and ✅ **Reveal**
+buttons holding the code.
+
+The ❓ **Question** blocks are there to make you think before you write. The **answers to the
+hand-in questions are not in these files** — those are what you are being asked for. A couple of
+warm-up questions that are *not* part of the hand-in do keep their answers behind a reveal button,
+so you can check your understanding as you go.
+
+**Prefer to focus on the concepts rather than the coding?** Use a *solved* version: the same
+document with all the code already filled in, so you can just run it and work through the questions.
+
+### How to run it
+
+**R:** open `exercise/pca_eurasia.Rmd` in RStudio and run it **chunk by chunk** (the green ▶ button).
+You only need `ggplot2`:
+
+```r
+install.packages("ggplot2")
+```
+
+Don't press *Knit* on the exercise version — it contains `TODO` placeholders, so it won't knit until
+you have filled them in. The `_solved.Rmd` knits as it is.
+
+**Python:** pick one of
+
+1. **Google Colab (nothing to install):**
+   [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week47/Friday/exercise/pca_eurasia.ipynb)
+   Run the optional install cell at the top; the data download themselves.
+2. **Your own Jupyter / VS Code:** open the notebook and run the optional install cell at the top.
+3. **Conda/mamba:**
+   ```bash
+   mamba env create -f env.yaml
+   mamba activate evolutionary-thinking-week47
+   jupyter lab
+   ```
+
+Everything runs in well under a minute on any laptop.
 
 ## Data
-The data you will be analyzing in this exercise has already been run with `smartPCA` and you will be working with principal components of west and east Eurasian populations.
 
-### West Eurasian populations
-The principal component dataset is contained in [`dataWE.txt.zip`](dataWE.txt.zip). The columns of the dataset contain the ID of an individual, followed by the first 10 principal components, followed by the population identifier column (`POP`) and modern or ancient population identifier (`ModAnc`). Some populations in the `POP` column may be unfamiliar to you - I encourage you to spend some time googling these populations and their origin so you can come up with an interesting set of populations for later analyses. 
+The files are in [`data/`](data/) as plain tab-separated text (the `.zip` versions in this folder
+are the originals, kept for reference). The tutorial loads them for you.
 
-The [`dataWE_LatLong.txt.zip`](dataWE_LatLong.txt.zip) file contains three columns: ID of an ancient individual, latitude and longitude of ancient samples (note that latitude/longitude data is not available for all ancient samples).
+| File | Contents |
+|---|---|
+| `dataWE.txt` | 997 West Eurasian individuals: ID, PC1–PC10, population, group |
+| `dataEE.txt` | 296 East Eurasian individuals, same columns — a **separate** PCA with its own axes |
+| `dataWE_LatLong.txt` | Latitude/longitude of the excavation site, for 191 of the 220 ancient individuals |
 
-### East Eurasian populations
-The dataset is contained in the [`dataEE.txt.zip`](dataEE.txt.zip) file. The column structure of the dataset is the same as for [`dataWE.txt.zip`](dataWE.txt.zip). The dataset contains modern individuals from Russia and Siberia, and four ancient Eskimo populations - two from Russian Eskimo people and two from USA Eskimo populations.
+### Things the old version of this page got wrong
 
-## Strategy
-I suggest loading the data into `R`, familiarizing yourself with it and using the `ggplot2` library to plot. Use the script [`examples.R.zip`](examples.R.zip) to get started with plotting data. Plot the first two PCs from the [`dataWE.txt.zip`](dataWE.txt.zip) dataset to make sure the plot is qualitatively similar to the PC plot from Mathieson et al. (2015).
+These tripped people up every year, so they are worth stating plainly. All of them are explained in
+the tutorial where they matter.
 
-## Questions
-### West Eurasian populations
-1. Plot the first two principal components of the [`dataWE.txt.zip`](dataWE.txt.zip) dataset. Use the `ModAnc` column to color the points.
-2. Subset the dataset to the English, Norwegian, Finnish and Icelandic population (using the `POP` column) and plot the result (PC1 vs. PC2). Interpret the relationship between populations (e.g., which populations cluster together, is this expected given the geography of the populations, how do the PCs split the populations?).
-3. Subset the dataset to four populations of your choice and plot the result. Interpret the relationship between populations.
-4. Plot the third and fourth principal component (of the four populations). Has the relationship between populations changed?
-5. Plot some other combinations of PC5-PC10 (of the four populations). What can you observe with respect to the separation of populations on the plots (is it better or worse compared to PC1-PC4 plots)? Why?
-6. Correlate the latitude and longitude of ancient individuals with the first two principal components (hint: use the `R` function `merge` to merge the [`dataWE.txt.zip`](dataWE.txt.zip) and [`dataWE_LatLong.txt.zip`](dataWE_LatLong.txt.zip) datasets by the `IND` column). Report the correlation coefficients and their significance. Comment on the result.
-### East Eurasian populations
-7. Plot the first two principal components of the [`dataEE.txt.zip`](dataEE.txt.zip) dataset. Use the `POP` column to color the points. Interpret the relationship between populations (e.g., which populations cluster together, is this expected given the geography of the populations, how do the PCs split the populations?).
-8. Plot the third and fourth principal component of the [`dataEE.txt.zip`](dataEE.txt.zip) dataset. How has the relationship between populations changed?
-### General questions
-9. What would be some artefacts of ancient DNA sequencing that makes them unsuitable for calculating PCs?
-10. Apart from genotype data, what other type of biological data can you analyze with PCA?
+- **`ModAnc` is not "modern or ancient".** It has **six** values — `Modern`, `Hunter-gatherer`,
+  `EHG`, `Early-farmer`, `Steppe`, `Samara_Eneolithic` — which are archaeological/ancestry groups.
+  There is no value `"Ancient"`, so filtering for it silently gives you nothing.
+- **Three population names are mangled**: `Modernaltese`, `Modernordovian` and `Modernotala_HG` are
+  really `Maltese`, `Mordovian` and `Motala_HG`. Someone replaced `M` with `Modern` across the whole
+  file.
+- **Eight rows of `dataWE_LatLong.txt` have latitude and longitude swapped**, putting Bronze Age
+  Europeans in the Gulf of Aden and the Arctic Ocean. Fixing them takes PC1 ~ latitude from
+  r = −0.38 to r = −0.69.
+- **There are no eigenvalues**, and `smartPCA` normalised every PC to unit length — so all ten axes
+  have exactly the same spread. You cannot report variance explained, and you must not infer a PC's
+  importance from the width of its cloud.
+- **`Russia_Baikal` is not an Arctic group** despite being listed with three Yupik/Unangax̂
+  populations; Lake Baikal is deep in continental Siberia, and the data show it behaving
+  accordingly.
 
+## Hand-in
+
+The questions are **hand-in exercise 3**, to be submitted on Brightspace (see also
+[`handin_3/`](../../handin_3)). Each question is marked **📝 Hand-in question N** in the tutorial, in
+the section that gives you the tools for it, and there is a checklist at the end.
+
+| Hand-in question | Where |
+|---|---|
+| 1. PC1 vs PC2 of `dataWE`, coloured by `ModAnc` | §4 |
+| 2. English, Norwegian, Finnish, Icelandic | §6 |
+| 3. Four populations of your choice | §6 |
+| 4. PC3 vs PC4 of those four | §7 |
+| 5. Combinations of PC5–PC10, and why | §7 |
+| 6. Correlate latitude/longitude with PC1 and PC2 | §8 |
+| 7. PC1 vs PC2 of `dataEE` | §9 |
+| 8. PC3 vs PC4 of `dataEE` | §9 |
+| 9. aDNA artefacts that make ancient samples unsuitable for computing PCs | §2 and §10 |
+| 10. What other data can you analyse with PCA | §10 |
+
+(Section numbers are the same in the R and Python versions.)
