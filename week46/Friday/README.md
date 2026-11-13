@@ -1,5 +1,11 @@
 # Friday Week46
 
+**THIS IS NOT WHAT WE ARE ACTUALLY DOING TODAY! INSTEAD WE ARE GOING TO DO WEEK 47'S EXERCISE TO GIVE YOU A HEAD START WITH HAND IN 3!**
+
+If you are interested you are welcome to do this in your spare time, but it is not part of the curriculum, and it is not exam-related.
+
+--------------------------------------------------------------------------------------------
+
 ## Work plan
 For this week's exercize, we will study the effect of protein evolution on tree inference. We will calculate the amino acid substitution matrix 
 (proportions of all the different amino acid substitutions present in the protein alignment) for each gene and correlate these values with physio-chemical properties of amino acids. 
