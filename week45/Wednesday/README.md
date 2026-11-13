@@ -2,7 +2,7 @@
 
 ## Work plan
 
-[slides for today](https://github.com/cpantea/Evolutionary_Thinking_2023/blob/main/week45/Wednesday/Week45_Wed.pdf)
+[slides for today](https://github.com/emmadiepeveen/Evolutionary_Thinking_2026/blob/main/week45/Wednesday/Week%2045_presentationWednesday2026.pdf)
 
 We are going to discuss papers about primate genomics:
   •	Kuderna et al. (2023) A global catalog of whole-genome diversity from 233 primate species. Science 380: 906–913. 
