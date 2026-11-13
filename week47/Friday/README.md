@@ -10,10 +10,6 @@ The West Eurasian analysis recreates the PCA in
 [Mathieson et al. (2015), *Nature* 528:499–503](https://doi.org/10.1038/nature16152),
 *Genome-wide patterns of selection in 230 ancient Eurasians* (you don't have to read the paper).
 
-> **Not Wednesday's paper.** Wednesday's discussion was Bergeron et al. (2023) on germline mutation
-> rates, which has nothing to do with this exercise. An earlier version of this page said the two
-> were connected — they aren't.
-
 Along the way you will:
 
 - see what `smartPCA` was actually given, and why ancient samples are **projected** onto modern
@@ -84,26 +80,6 @@ are the originals, kept for reference). The tutorial loads them for you.
 | `dataEE.txt` | 296 East Eurasian individuals, same columns — a **separate** PCA with its own axes |
 | `dataWE_LatLong.txt` | Latitude/longitude of the excavation site, for 191 of the 220 ancient individuals |
 
-### Things the old version of this page got wrong
-
-These tripped people up every year, so they are worth stating plainly. All of them are explained in
-the tutorial where they matter.
-
-- **`ModAnc` is not "modern or ancient".** It has **six** values — `Modern`, `Hunter-gatherer`,
-  `EHG`, `Early-farmer`, `Steppe`, `Samara_Eneolithic` — which are archaeological/ancestry groups.
-  There is no value `"Ancient"`, so filtering for it silently gives you nothing.
-- **Three population names are mangled**: `Modernaltese`, `Modernordovian` and `Modernotala_HG` are
-  really `Maltese`, `Mordovian` and `Motala_HG`. Someone replaced `M` with `Modern` across the whole
-  file.
-- **Eight rows of `dataWE_LatLong.txt` have latitude and longitude swapped**, putting Bronze Age
-  Europeans in the Gulf of Aden and the Arctic Ocean. Fixing them takes PC1 ~ latitude from
-  r = −0.38 to r = −0.69.
-- **There are no eigenvalues**, and `smartPCA` normalised every PC to unit length — so all ten axes
-  have exactly the same spread. You cannot report variance explained, and you must not infer a PC's
-  importance from the width of its cloud.
-- **`Russia_Baikal` is not an Arctic group** despite being listed with three Yupik/Unangax̂
-  populations; Lake Baikal is deep in continental Siberia, and the data show it behaving
-  accordingly.
 
 ## Hand-in
 
